@@ -1,97 +1,294 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
-  Loader2, AlertCircle, CheckCircle2, ChevronDown, Check,
-  Map, Trash2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight
+  Loader2, AlertCircle, ChevronDown, Check,
+  Map, Trash2, X, ChevronLeft, ChevronRight
 } from "lucide-react";
 import api from "../../../services/api";
 
-// ─── Global responsive styles (from reference) ───────────────────────────────
-const STYLES = `
-  *, *::before, *::after { box-sizing: border-box; }
-  .ucr-wrap  { width:100%; padding-bottom:48px; font-family:Inter,sans-serif; overflow-x: hidden; }
-  .ucr-card  { background:#fff; border-radius:16px; box-shadow:0 1px 4px rgba(0,0,0,0.07); border:1px solid #f3f4f6; overflow:visible; margin-bottom: 24px; min-width: 0; }
-  .ucr-header{ padding:16px 20px; border-bottom:1px solid #f3f4f6; display:flex; align-items:center; gap:12px; }
-  .ucr-body  { padding:24px; }
-  .ucr-footer{ padding:14px 24px; background:#f9fafb; border-top:1px solid #f3f4f6; display:flex; align-items:center; justify-content:space-between; border-radius:0 0 16px 16px; flex-wrap: wrap; gap: 12px; }
-
-  /* Responsive Table Scroll Logic */
-  .ucr-table-container {
-    border: 1px solid #f3f4f6;
-    border-radius: 12px;
-    overflow-x: auto;
-    background: #fff;
-    -webkit-overflow-scrolling: touch;
-    width: 100%;
-  }
-  .ucr-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 600px; }
-  .ucr-table thead { background: #f9fafb; border-bottom: 1px solid #f3f4f6; }
-  .ucr-table th { padding: 12px 16px; text-align: left; font-weight: 700; color: #6b7280; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
-  .ucr-table td { padding: 12px 16px; color: #374151; border-bottom: 1px solid #f3f4f6; white-space: nowrap; }
-
-  .ucr-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:20px; margin-bottom:24px; }
-  .ucr-grid-2 { display:grid; grid-template-columns:repeat(2,1fr); gap:20px; margin-bottom:24px; }
-  .ucr-grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:20px; margin-bottom:24px; }
-
-  /* Responsive Col Spans */
-  .col-span-2 { grid-column: span 2; }
-  .col-span-4 { grid-column: span 4; }
-
-  @media(max-width:1024px){
-    .ucr-grid, .ucr-grid-4, .ucr-grid-2 { grid-template-columns:repeat(2,1fr); gap:16px; }
-    .col-span-4 { grid-column: span 2; }
-  }
-  @media(max-width:768px){
-    .ucr-grid, .ucr-grid-4, .ucr-grid-2 { grid-template-columns:1fr; gap:16px; }
-    .col-span-2, .col-span-4 { grid-column: span 1 !important; }
-    .ucr-body  { padding:16px; }
-    .ucr-header { padding: 16px; flex-direction: column; align-items: flex-start; }
-    .ucr-header > div { width: 100%; }
-    .ucr-header > button { align-self: flex-end; margin-top: -30px; }
-    .ucr-footer { justify-content: center; flex-direction: column; }
-    .ucr-footer > div, .ucr-footer > button { width: 100%; justify-content: center; }
-  }
-  @keyframes ucr-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
-`;
-
+// ─── Constants ──────────────────────────────────────────────────────────────
 const FH = 40;
 const PAGE_SIZES = [5, 10, 20, 50];
 
+/* ─── Premium UI Styles & Utilities ──────────────────────────────────────── */
+const STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght=500;600;700;800&family=Inter:wght=400;500;600;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  .dc-wrap {
+    font-family: 'Inter', sans-serif;
+    width: 100%;
+  }
+
+  .ucr-brand { font-family: 'Plus Jakarta Sans', sans-serif; }
+
+  /* ── Single Unified Card Container ── */
+  .dc-card {
+    background: #ffffff !important;
+    border: 1px solid #edf2f7;
+    border-radius: 16px;
+    isolation: isolate;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+    position: relative;
+    overflow: visible !important;
+    margin-bottom: 24px;
+    min-width: 0;
+  }
+
+  /* ── Card Header ── */
+  .dc-header {
+    padding: 24px 28px 16px;
+    background: #ffffff !important;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+    border-radius: 16px 16px 0 0 !important;
+    overflow: visible !important;
+  }
+
+  .dc-page-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #3B82F6, #2563eb);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 3px 8px rgba(59,130,246,0.2);
+    flex-shrink: 0;
+  }
+
+  /* ── Form Body ── */
+  .dc-body { 
+    padding: 20px 28px 24px; 
+    background: #ffffff !important; 
+    border-bottom-left-radius: 16px; 
+    border-bottom-right-radius: 16px;
+    overflow: visible !important;
+  }
+
+  /* ── Form Footer ── */
+  .dc-footer {
+    padding: 20px 28px 24px;
+    background: #ffffff !important;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-radius: 16px;
+    border-top: 1px solid #f1f5f9;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  /* ── Responsive Input Grids ── */
+  .ucr-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px 16px; margin-bottom: 0; }
+
+  .col-span-2 { grid-column: span 2; }
+  .col-span-4 { grid-column: span 4; }
+
+  @media(max-width: 1200px) {
+    .ucr-grid-4 { grid-template-columns: repeat(3, 1fr); }
+    .col-span-4 { grid-column: span 3; }
+  }
+  @media(max-width: 1024px) {
+    .ucr-grid-4 { grid-template-columns: repeat(2, 1fr); gap: 18px; }
+    .col-span-4 { grid-column: span 2; }
+  }
+  @media(max-width: 640px) {
+    .ucr-grid-4 { grid-template-columns: 1fr; gap: 20px; }
+    .col-span-2, .col-span-4 { grid-column: span 1 !important; }
+    .dc-body { padding: 20px 16px; }
+    .dc-header { padding: 20px 16px 12px; }
+    .dc-footer { padding: 16px; justify-content: center; flex-direction: column-reverse; }
+    .dc-footer > button, .dc-footer > div { width: 100% !important; justify-content: center !important; }
+  }
+
+  /* ── Portal Dropdown Layer ── */
+  .dc-portal-dropdown {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12), 0 4px 12px rgba(15, 23, 42, 0.04);
+    z-index: 9999999 !important;
+    overflow: hidden;
+  }
+
+  .dc-portal-dropdown ul {
+    background: #ffffff !important;
+    max-height: 220px;
+    overflow-y: auto;
+    padding: 6px;
+    margin: 0;
+    list-style: none;
+    scrollbar-width: thin;
+    scrollbar-color: #e2e8f0 transparent;
+  }
+
+  .dc-opt {
+    padding: 10px 14px;
+    font-size: 13.5px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #475569;
+    background: #ffffff !important;
+    transition: all 0.12s;
+    font-weight: 500;
+  }
+  .dc-opt:hover   { background: rgba(59,130,246,0.06) !important; color: #2563eb; }
+  .dc-opt.selected { background: rgba(59,130,246,0.08) !important; color: #2563eb; font-weight: 600; }
+
+  /* ── Premium Compact Table Container ── */
+  .ucr-table-container {
+    border: 1px solid #edf2f7;
+    border-radius: 12px;
+    overflow-x: auto;
+    background: #ffffff !important;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.01);
+    margin-bottom: 16px;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+  }
+
+  .ucr-table-container::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+  }
+  .ucr-table-container::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 100px;
+  }
+  .ucr-table-container::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 100px;
+    border: 2px solid #f1f5f9;
+  }
+  .ucr-table-container::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+
+  .ucr-table { width: 100%; border-collapse: collapse; font-size: 13.5px; text-align: left; min-width: 600px; }
+  .ucr-table thead tr { position: sticky; top: 0; z-index: 10; }
+  .ucr-table thead { background: #f8fafc; }
+  
+  .ucr-table th { 
+    padding: 12px 16px; 
+    font-size: 11px; 
+    font-weight: 600; 
+    text-transform: uppercase; 
+    letter-spacing: 0.05em; 
+    color: #64748b;
+    border-bottom: 1px solid #edf2f7; 
+    white-space: nowrap;
+  }
+  .ucr-table td { 
+    padding: 11px 16px; 
+    color: #475569; 
+    border-bottom: 1px solid #f8fafc; 
+    font-weight: 500; 
+    white-space: nowrap; 
+  }
+  .ucr-table tbody tr:last-child td { border-bottom: none; }
+  .ucr-table tbody tr:hover { background: #f8fafc; }
+
+  /* ── System Error Banner ── */
+  .dc-error-banner {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 12px;
+    padding: 12px 16px;
+    color: #dc2626;
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  /* ── Action Buttons ── */
+  .dc-submit-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    background: #2563eb !important;
+    color: #fff !important;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+    transition: all 0.2s;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    letter-spacing: 0.01em;
+    height: 40px;
+  }
+  .dc-submit-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.45);
+    background: #1d4ed8 !important;
+  }
+  .dc-submit-btn:disabled { background: #93c5fd !important; color: #ffffff !important; cursor: not-allowed; box-shadow: none; opacity: 0.8 !important; }
+
+  .dc-overlay {
+    position: fixed; inset: 0; z-index: 9999999;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(15,23,42,0.3);
+    backdrop-filter: blur(4px);
+    padding: 16px;
+  }
+
+  .dc-popup {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.1);
+    padding: 36px 32px;
+    max-width: 360px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .dc-field-wrap { display: flex; flex-direction: column; gap: 4px; position: relative; overflow: visible !important; }
+`;
+
 export default function StockistMappingDeletionReport() {
-  // ─── App State ───────────────────────────────────────────────────────────────
   const [isFilterOpen, setIsFilterOpen] = useState(true);
   const [tableVisible, setTableVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState("");
-  const [successMsg, setSuccessMsg] = useState("");
+  const [popup, setPopup] = useState({ isOpen: false, message: "" });
 
-  // ─── Filter State ────────────────────────────────────────────────────────────
   const [filters, setFilters] = useState({
     stateId: "",
     districtIds: [],
     employeeIds: []
   });
 
-  // ─── Master Data (Dropdowns) ─────────────────────────────────────────────────
   const [states, setStates] = useState([]);
   const [districts, setDistricts] = useState([]);
   const [employees, setEmployees] = useState([]);
 
-  // ─── Table Data State ────────────────────────────────────────────────────────
   const [mappedData, setMappedData] = useState([]);
   const [selectedRowIds, setSelectedRowIds] = useState([]);
   
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
 
-  // ─── Helper for Auth Headers ─────────────────────────────────────────────────
   const getAuthHeaders = useCallback(() => ({
     headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` }
   }), []);
 
-  // ─── Data Fetching (Cascading Dropdowns with Normalization) ──────────────────
-  
-  // 1. Fetch States on Mount
   useEffect(() => {
     const fetchStates = async () => {
       try {
@@ -107,7 +304,6 @@ export default function StockistMappingDeletionReport() {
     fetchStates();
   }, [getAuthHeaders]);
 
-  // 2. Fetch Districts when State changes
   useEffect(() => {
     setFilters(prev => ({ ...prev, districtIds: [], employeeIds: [] }));
     setDistricts([]); setEmployees([]);
@@ -129,13 +325,12 @@ export default function StockistMappingDeletionReport() {
     }
   }, [filters.stateId, getAuthHeaders]);
 
-  // 3. Fetch Employees when District changes
   useEffect(() => {
     setFilters(prev => ({ ...prev, employeeIds: [] }));
     setEmployees([]);
     setTableVisible(false);
 
-    if (filters.districtIds.length > 0) {
+    if (filters.districtIds && filters.districtIds.length > 0) {
       const fetchEmployees = async () => {
         try {
           const query = filters.districtIds.map(id => `districtIds=${id}`).join('&');
@@ -153,8 +348,6 @@ export default function StockistMappingDeletionReport() {
     }
   }, [filters.districtIds, getAuthHeaders]);
 
-  // ─── Handlers ────────────────────────────────────────────────────────────────
-
   const handleFilterChange = (field, value) => {
     setFilters(prev => ({ ...prev, [field]: value }));
     setTableVisible(false);
@@ -162,9 +355,9 @@ export default function StockistMappingDeletionReport() {
   };
 
   const handleViewStatus = async () => {
-    setError(""); setSuccessMsg("");
+    setError(""); 
     
-    if (!filters.stateId || filters.districtIds.length === 0 || filters.employeeIds.length === 0) {
+    if (!filters.stateId || !filters.districtIds?.length || !filters.employeeIds?.length) {
       return setError("Please select State, District, and Employee before viewing status.");
     }
 
@@ -179,20 +372,21 @@ export default function StockistMappingDeletionReport() {
 
       const res = await api.post(`/api/masters/stockist-mapping-report/view`, payload, getAuthHeaders());
       
-      const fetchedData = res.data?.data?.rows || [];
+      const responseData = res.data?.data || res.data || {};
+      const fetchedData = Array.isArray(responseData) ? responseData : (responseData.rows || []);
       
       const normalizedData = Array.isArray(fetchedData) ? fetchedData.map((row, i) => ({
         id: String(row.mappingId || row.id || i),
-        districtName: row.stockistDistrictName || row.employeeDistrictName || "Unknown District",
-        stockistName: row.stockistName || row.partyName || "Unknown Stockist",
-        userName: row.userName || row.employeeName || "Unknown User"
+        districtName: row.stockistDistrictName || row.employeeDistrictName || row.districtName || "Unknown District",
+        stockistName: row.stockistName || row.partyName || row.providerName || "Unknown Stockist",
+        userName: row.userName || row.employeeName || row.name || "Unknown User"
       })) : [];
 
       setMappedData(normalizedData);
       setTableVisible(true);
       setCurrentPage(1);
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to fetch mapped data.");
+      setError(err.response?.data?.message || "Failed to fetch mapped data. No records found.");
       setMappedData([]);
       setTableVisible(true);
       setCurrentPage(1);
@@ -218,26 +412,18 @@ export default function StockistMappingDeletionReport() {
 
   const handleDelete = async () => {
     if (selectedRowIds.length === 0) return;
-    
     if (!window.confirm(`Are you sure you want to delete the ${selectedRowIds.length} selected mapping(s)?`)) return;
 
     setIsDeleting(true);
-    setError(""); setSuccessMsg("");
+    setError(""); 
 
     try {
-      const payload = {
-        mappingIds: selectedRowIds.map(Number)
-      };
-
+      const payload = { mappingIds: selectedRowIds.map(Number) };
       await api.post("/api/masters/stockist-mapping-report/delete", payload, getAuthHeaders());
       
-      setSuccessMsg("Selected mappings deleted successfully!");
-      
+      setPopup({ isOpen: true, message: "Selected mappings deleted successfully!" });
       setMappedData(prev => prev.filter(row => !selectedRowIds.includes(row.id)));
       setSelectedRowIds([]);
-      
-      setTimeout(() => setSuccessMsg(""), 4000);
-      
     } catch (err) {
       setError(err.response?.data?.message || "Failed to delete mappings.");
     } finally {
@@ -245,14 +431,13 @@ export default function StockistMappingDeletionReport() {
     }
   };
 
-  // ─── Dropdown Options Mapping ─────────────────────────────────────────
-  const stateOpts = states.map(s => ({ id: String(s.id), value: String(s.id), label: s.stateName }));
-  const distOpts = districts.map(d => ({ id: String(d.id), value: String(d.id), label: d.districtName }));
-  const empOpts = employees.map(e => ({ id: String(e.id), value: String(e.id), label: e.employeeName }));
+  const stateOpts = states.map(s => ({ value: String(s.id), label: s.stateName }));
+  const distOpts = districts.map(d => ({ value: String(d.id), label: d.districtName }));
+  const empOpts = employees.map(e => ({ value: String(e.id), label: e.employeeName }));
 
-  // ─── Pagination Logic ────────────────────────────────────────────────────────
   const totalPages = Math.max(1, Math.ceil(mappedData.length / pageSize));
-  const pagedData = mappedData.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages); 
+  const pagedData = mappedData.slice((safeCurrentPage - 1) * pageSize, safeCurrentPage * pageSize);
 
   const allVisibleSelected = pagedData.length > 0 && pagedData.every(row => selectedRowIds.includes(row.id));
 
@@ -260,80 +445,54 @@ export default function StockistMappingDeletionReport() {
     setCurrentPage(Math.min(Math.max(1, page), totalPages));
   };
 
-  // ─── Render ──────────────────────────────────────────────────────────────────
   return (
-    <div className="ucr-wrap">
+    <div className="dc-wrap">
       <style>{STYLES}</style>
 
-      {/* Alerts */}
       {error && (
-        <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 12, padding: "10px 16px", color: "#dc2626", fontSize: 13, fontWeight: 600, marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
-          <AlertCircle size={16} /> {error}
-        </div>
-      )}
-      {successMsg && (
-        <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 12, padding: "10px 16px", color: "#16a34a", fontSize: 13, fontWeight: 600, marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
-          <CheckCircle2 size={16} /> {successMsg}
+        <div className="dc-error-banner">
+          <AlertCircle size={15} style={{ flexShrink: 0 }} />
+          {error}
         </div>
       )}
 
-      {/* ══ FILTER SECTION ═════════════════════════════════════════════════ */}
-      <div className="ucr-card">
-        <div className="ucr-header">
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: "#eff6ff", border: "1px solid #dbeafe", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Map size={17} style={{ color: "#2563eb" }} />
+      {/* Filter Card Container */}
+      <div className="dc-card">
+        <div className="dc-header">
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div className="dc-page-icon">
+              <Map size={16} color="#fff" />
+            </div>
+            <div>
+              <h2 className="ucr-brand" style={{ fontSize: 16, fontWeight: 700, color: "#1e293b", letterSpacing: "-0.01em", lineHeight: 1.2 }}>MR Stockist Mapped Report</h2>
+              <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>View and manage employee to stockist mappings</p>
+            </div>
           </div>
-          <div style={{ flex: 1 }}>
-            <h2 style={{ fontSize: 15, fontWeight: 700, color: "#111827", margin: 0 }}>MR Stockist Mapped Report</h2>
-            <p style={{ fontSize: 11, color: "#6b7280", margin: 0, marginTop: 2 }}>
-              View and manage employee to stockist mappings
-            </p>
-          </div>
-          <button onClick={() => setIsFilterOpen(!isFilterOpen)} style={{ background: "none", border: "none", cursor: "pointer" }}>
+          <button type="button" onClick={() => setIsFilterOpen(!isFilterOpen)} style={{ background: "none", border: "none", cursor: "pointer" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: "#6b7280" }}>FILTER</span>
-              <div style={{ width: 34, height: 18, borderRadius: 20, background: isFilterOpen ? "#2563eb" : "#d1d5db", position: "relative", cursor: "pointer", transition: "0.2s" }}>
-                <div style={{ width: 14, height: 14, borderRadius: "50%", background: "#fff", position: "absolute", top: 2, left: isFilterOpen ? 18 : 2, transition: "0.2s" }} />
+              <span className="ucr-brand" style={{ fontSize: 13, fontWeight: 600, color: "#475569" }}>Filter</span>
+              <div style={{ width: 40, height: 20, borderRadius: 100, position: "relative", cursor: "pointer", transition: "0.2s", background: isFilterOpen ? "#3B82F6" : "#cbd5e1" }}>
+                <div style={{ width: 14, height: 14, background: "#fff", borderRadius: "50%", position: "absolute", top: 3, left: isFilterOpen ? 23 : 3, transition: "0.2s" }} />
               </div>
             </div>
           </button>
         </div>
 
         {isFilterOpen && (
-          <div className="ucr-body">
+          <div className="dc-body">
             <div className="ucr-grid-4">
-              <SingleDropdown 
-                label="SELECT STATE *" 
-                options={stateOpts} 
-                value={filters.stateId} 
-                onSelect={(v) => handleFilterChange("stateId", v)} 
-              />
-              <MultiDropdown 
-                label="SELECT DISTRICT *" 
-                options={distOpts} 
-                selectedIds={filters.districtIds} 
-                onChange={(v) => handleFilterChange("districtIds", v)} 
-                disabled={!filters.stateId} 
-              />
-              <MultiDropdown 
-                label="SELECT EMPLOYEE *" 
-                options={empOpts} 
-                selectedIds={filters.employeeIds} 
-                onChange={(v) => handleFilterChange("employeeIds", v)} 
-                disabled={!filters.districtIds.length} 
-              />
-              
+              <SingleDropdown label="Select State" options={stateOpts} value={filters.stateId} onSelect={(v) => handleFilterChange("stateId", v)} />
+              <MultiDropdown label="Select District" options={distOpts} selectedIds={filters.districtIds} onChange={(v) => handleFilterChange("districtIds", v)} disabled={!filters.stateId} />
+              <MultiDropdown label="Select Employee" options={empOpts} selectedIds={filters.employeeIds} onChange={(v) => handleFilterChange("employeeIds", v)} disabled={filters.districtIds.length === 0} />
               <div style={{ display: "flex", alignItems: "flex-end" }}>
                 <button 
+                  type="button"
                   onClick={handleViewStatus} 
                   disabled={isLoading} 
-                  style={{
-                    height: FH, width: "100%", padding: "0 24px", borderRadius: 8, background: "#2563eb", color: "#fff",
-                    fontSize: 13, fontWeight: 700, border: "none", cursor: isLoading ? "not-allowed" : "pointer",
-                    opacity: isLoading ? 0.6 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8
-                  }}
+                  className="dc-submit-btn"
+                  style={{ width: "100%", justifyContent: "center" }}
                 >
-                  {isLoading ? <Loader2 size={16} style={{ animation: "ucr-spin 1s linear infinite" }} /> : <Check size={16} />}
+                  {isLoading ? <Loader2 size={14} style={{ animation: "dc-spin 1s linear infinite" }} /> : <Check size={14} />}
                   View Status
                 </button>
               </div>
@@ -342,24 +501,27 @@ export default function StockistMappingDeletionReport() {
         )}
       </div>
 
-      {/* ══ TABLE SECTION ═════════════════════════════════════════════════ */}
+      {/* Table Sheet Card Container */}
       {tableVisible && (
-        <div className="ucr-card animate-in slide-in-from-bottom-4 duration-500">
-          <div className="ucr-header" style={{ background: "#f9fafb" }}>
-            <h3 style={{ fontSize: 14, fontWeight: 700, color: "#374151", margin: 0 }}>Stockist Mapped Detail</h3>
+        <div className="dc-card">
+          <div className="dc-header" style={{ background: "#f8fafc" }}>
+            <h3 className="ucr-brand" style={{ fontSize: 14, fontWeight: 700, color: "#475569" }}>Stockist Mapped Detail</h3>
           </div>
 
-          <div className="ucr-body" style={{ padding: 0 }}>
+          <div className="dc-body" style={{ padding: 0 }}>
             <div className="ucr-table-container" style={{ border: "none", borderRadius: "0 0 16px 16px" }}>
               <table className="ucr-table">
                 <thead>
                   <tr>
-                    <th style={{ width: 60, textAlign: "center", cursor: "pointer" }} onClick={toggleAllRows}>
-                      <div style={{ 
-                        width: 16, height: 16, borderRadius: 4, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center",
-                        border: allVisibleSelected && pagedData.length > 0 ? "1px solid #2563eb" : "2px solid #d1d5db",
-                        background: allVisibleSelected && pagedData.length > 0 ? "#2563eb" : "#fff"
-                      }}>
+                    <th style={{ width: 60, textAlign: "center" }}>
+                      <div 
+                        onClick={toggleAllRows}
+                        style={{ 
+                          width: 16, height: 16, borderRadius: 4, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+                          border: allVisibleSelected && pagedData.length > 0 ? "1px solid #3B82F6" : "2px solid #cbd5e1",
+                          background: allVisibleSelected && pagedData.length > 0 ? "#3B82F6" : "#fff", transition: "all 0.15s"
+                        }}
+                      >
                         {allVisibleSelected && pagedData.length > 0 && <Check size={12} style={{ color: "#fff" }} />}
                       </div>
                     </th>
@@ -371,32 +533,26 @@ export default function StockistMappingDeletionReport() {
                 <tbody>
                   {mappedData.length === 0 ? (
                     <tr>
-                      <td colSpan={4} style={{ textAlign: "center", padding: 40, color: "#9ca3af" }}>
-                        No mapped records found.
-                      </td>
+                      <td colSpan={4} style={{ textAlign: "center", padding: 40, color: "#94a3b8", fontStyle: "italic" }}>No mapped records found.</td>
                     </tr>
                   ) : (
                     pagedData.map((row) => (
-                      <tr 
-                        key={row.id} 
-                        onClick={() => toggleRowSelection(row.id)}
-                        style={{ 
-                          cursor: "pointer", 
-                          background: selectedRowIds.includes(row.id) ? "#eff6ff" : "transparent"
-                        }}
-                      >
-                        <td style={{ textAlign: "center" }}>
-                          <div style={{ 
-                            width: 16, height: 16, borderRadius: 4, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center",
-                            border: selectedRowIds.includes(row.id) ? "1px solid #2563eb" : "2px solid #d1d5db",
-                            background: selectedRowIds.includes(row.id) ? "#2563eb" : "#fff"
-                          }}>
+                      <tr key={row.id} onClick={() => toggleRowSelection(row.id)} style={{ background: selectedRowIds.includes(row.id) ? "rgba(59, 130, 246, 0.05)" : "transparent" }}>
+                        <td style={{ textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
+                          <div 
+                            onClick={() => toggleRowSelection(row.id)}
+                            style={{ 
+                              width: 16, height: 16, borderRadius: 4, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+                              border: selectedRowIds.includes(row.id) ? "1px solid #3B82F6" : "2px solid #cbd5e1",
+                              background: selectedRowIds.includes(row.id) ? "#3B82F6" : "#fff", transition: "all 0.15s"
+                            }}
+                          >
                             {selectedRowIds.includes(row.id) && <Check size={12} style={{ color: "#fff" }} />}
                           </div>
                         </td>
-                        <td style={{ fontWeight: 600, color: "#4b5563" }}>{row.districtName}</td>
-                        <td style={{ fontWeight: 700, color: "#111827", textTransform: "uppercase" }}>{row.stockistName}</td>
-                        <td style={{ fontWeight: 600, color: "#6b7280" }}>{row.userName}</td>
+                        <td style={{ fontWeight: 600, color: "#475569" }}>{row.districtName}</td>
+                        <td style={{ fontWeight: 700, color: "#1e293b", textTransform: "uppercase" }}>{row.stockistName}</td>
+                        <td style={{ fontWeight: 600, color: "#64748b" }}>{row.userName}</td>
                       </tr>
                     ))
                   )}
@@ -405,142 +561,202 @@ export default function StockistMappingDeletionReport() {
             </div>
           </div>
 
-          <div className="ucr-footer" style={{ borderTop: "1px solid #f3f4f6" }}>
+          <div className="dc-footer">
             <button 
+              type="button"
               onClick={handleDelete} 
-              disabled={isDeleting || selectedRowIds.length === 0} 
+              disabled={selectedRowIds.length === 0} 
               style={{
-                height: 38, padding: "0 20px", borderRadius: 8, background: "#ef4444", color: "#fff",
-                fontSize: 13, fontWeight: 700, border: "none", cursor: (isDeleting || selectedRowIds.length === 0) ? "not-allowed" : "pointer",
-                opacity: (isDeleting || selectedRowIds.length === 0) ? 0.5 : 1, display: "flex", alignItems: "center", gap: 8
+                height: 40, padding: "0 24px", borderRadius: 8, background: "#ef4444", color: "#fff",
+                fontSize: 14, fontWeight: 600, border: "none", cursor: (selectedRowIds.length === 0) ? "not-allowed" : "pointer",
+                opacity: (selectedRowIds.length === 0) ? 0.5 : 1, display: "flex", alignItems: "center", gap: 8, transition: "all 0.15s",
+                fontFamily: "'Plus Jakarta Sans', sans-serif"
               }}
             >
-              {isDeleting ? <Loader2 size={16} style={{ animation: "ucr-spin 1s linear infinite" }} /> : <Trash2 size={16} />}
-              Delete Stockists {selectedRowIds.length > 0 && `(${selectedRowIds.length})`}
+              <Trash2 size={14} />
+              Delete Selected {selectedRowIds.length > 0 && `(${selectedRowIds.length})`}
             </button>
 
             {mappedData.length > 0 && (
               <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
-                <div style={{ color: "#6b7280", fontSize: 11 }}>
-                  Showing <span style={{ fontWeight: 700, color: "#374151" }}>{(currentPage - 1) * pageSize + 1}</span> to <span style={{ fontWeight: 700, color: "#374151" }}>{Math.min(currentPage * pageSize, mappedData.length)}</span> of <span style={{ fontWeight: 700, color: "#374151" }}>{mappedData.length}</span> entries
+                <div style={{ color: "#64748b", fontSize: 12 }}>
+                  Showing <span style={{ fontWeight: 700, color: "#1e293b" }}>{(safeCurrentPage - 1) * pageSize + 1}</span> to <span style={{ fontWeight: 700, color: "#1e293b" }}>{Math.min(safeCurrentPage * pageSize, mappedData.length)}</span> of <span style={{ fontWeight: 700, color: "#1e293b" }}>{mappedData.length}</span> entries
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ color: "#6b7280", marginRight: 6, fontSize: 11 }}>Items per page:</span>
+                  <span style={{ color: "#64748b", marginRight: 6, fontSize: 12 }}>Items per page:</span>
                   <select
                     value={pageSize}
                     onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
-                    style={{ border: "1px solid #d1d5db", borderRadius: 4, padding: "2px 6px", fontSize: 11, fontWeight: 700 }}
+                    style={{ border: "1px solid #e2e8f0", borderRadius: 6, padding: "2px 8px", outline: "none", cursor: "pointer", color: "#475569", background: "#ffffff", fontFamily: "'Inter', sans-serif" }}
                   >
-                    {PAGE_SIZES.map((s) => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
+                    {PAGE_SIZES.map((s) => (<option key={s} value={s}>{s}</option>))}
                   </select>
                   <div style={{ width: 12 }} />
-                  <button
-                    onClick={() => goToPage(1)} disabled={currentPage === 1}
-                    style={{ background: "#fff", border: "1px solid #d1d5db", borderRadius: 4, padding: "4px 8px", cursor: currentPage === 1 ? "not-allowed" : "pointer", opacity: currentPage === 1 ? 0.4 : 1, fontWeight: 600, fontSize: 11 }}
-                  >First</button>
-                  <button
-                    onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1}
-                    style={{ background: "#fff", border: "1px solid #d1d5db", borderRadius: 4, width: 26, height: 26, display: "flex", alignItems: "center", justifyItems: "center", cursor: currentPage === 1 ? "not-allowed" : "pointer", opacity: currentPage === 1 ? 0.4 : 1 }}
-                  ><ChevronLeft size={13} style={{ margin: "0 auto" }} /></button>
-                  <div style={{ background: "#2563eb", color: "#fff", border: "1px solid #2563eb", borderRadius: 4, padding: "4px 10px", fontWeight: 700, fontSize: 11 }}>
-                    {currentPage}
-                  </div>
-                  <button
-                    onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages || totalPages === 0}
-                    style={{ background: "#fff", border: "1px solid #d1d5db", borderRadius: 4, width: 26, height: 26, display: "flex", alignItems: "center", justifyItems: "center", cursor: (currentPage === totalPages || totalPages === 0) ? "not-allowed" : "pointer", opacity: (currentPage === totalPages || totalPages === 0) ? 0.4 : 1 }}
-                  ><ChevronRight size={13} style={{ margin: "0 auto" }} /></button>
-                  <button
-                    onClick={() => goToPage(totalPages)} disabled={currentPage === totalPages || totalPages === 0}
-                    style={{ background: "#fff", border: "1px solid #d1d5db", borderRadius: 4, padding: "4px 8px", cursor: (currentPage === totalPages || totalPages === 0) ? "not-allowed" : "pointer", opacity: (currentPage === totalPages || totalPages === 0) ? 0.4 : 1, fontWeight: 600, fontSize: 11 }}
-                  >Last</button>
+                  <button type="button" onClick={() => goToPage(1)} disabled={safeCurrentPage === 1} style={pagBtnStyle}>First</button>
+                  <button type="button" onClick={() => goToPage(safeCurrentPage - 1)} disabled={safeCurrentPage === 1} style={{ ...pagBtnStyle, width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center" }}><ChevronLeft size={14} /></button>
+                  <div style={{ background: "#2563eb", color: "#fff", border: "1px solid #2563eb", borderRadius: 6, padding: "4px 12px", fontWeight: 700, fontSize: 12 }}>{safeCurrentPage}</div>
+                  <button type="button" onClick={() => goToPage(safeCurrentPage + 1)} disabled={safeCurrentPage === totalPages || totalPages === 0} style={{ ...pagBtnStyle, width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center" }}><ChevronRight size={14} /></button>
+                  <button type="button" onClick={() => goToPage(totalPages)} disabled={safeCurrentPage === totalPages || totalPages === 0} style={pagBtnStyle}>Last</button>
                 </div>
               </div>
             )}
           </div>
         </div>
       )}
-    </div>
-  );
-}
 
-// ═══════════════════════════════════════════════════════════════════
-// Helper Components
-// ═══════════════════════════════════════════════════════════════════
-
-function SingleDropdown({ label, value, onSelect, options = [], disabled }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [pos, setPos] = useState({ top: 0, left: 0, width: 0 });
-  const ref = useRef(null);
-
-  const openMenu = () => {
-    if (disabled) return;
-    const r = ref.current?.getBoundingClientRect();
-    if (r) setPos({ top: r.bottom + 4, left: r.left, width: r.width });
-    setIsOpen(true);
-  };
-
-  const selected = options.find(o => String(o.value) === String(value) || String(o.id) === String(value));
-  const hasValue = Boolean(value !== "" && value !== null && value !== undefined);
-  
-  return (
-    <div className="relative w-full select-none mt-1">
-      <div ref={ref} onClick={openMenu} style={{
-          width: "100%", height: FH, borderRadius: 8, padding: "0 12px", fontSize: 13, display: "flex",
-          alignItems: "center", border: `1.5px solid ${hasValue && !disabled ? (isOpen ? "#2563eb" : "#2563eb") : (isOpen ? "#d1d5db" : "#d1d5db")}`,
-          cursor: disabled ? "not-allowed" : "pointer", background: disabled ? "#f3f4f6" : "#fff",
-          transition: "border-color 0.2s"
-        }}>
-        <span style={{ flex: 1, fontWeight: 600, color: disabled ? "#6b7280" : (hasValue ? "#111827" : "transparent"), whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginRight: 8 }}>
-          {selected?.label || " "}
-        </span>
-        <ChevronDown size={14} style={{ color: "#9ca3af", transform: isOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "0.2s", flexShrink: 0 }} />
-      </div>
-      <label style={{
-          position: "absolute", left: 10, top: (hasValue || isOpen) ? -9 : 12, fontSize: (hasValue || isOpen) ? 10 : 12,
-          fontWeight: 600, color: disabled ? "#9ca3af" : ((hasValue || isOpen) ? "#2563eb" : "#9ca3af"), background: disabled ? ((hasValue || isOpen) ? "#f3f4f6" : "transparent") : "#fff",
-          padding: "0 4px", transition: "0.2s", pointerEvents: "none",
-          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "calc(100% - 20px)"
-        }}>
-        {label}
-      </label>
-
-      {isOpen && !disabled && (
-        <Portal top={pos.top} left={pos.left} width={pos.width} onClose={() => setIsOpen(false)}>
-          <div style={{ maxHeight: 250, overflowY: "auto", padding: "4px 0" }}>
-            {options.length === 0 ? (
-               <p style={{ padding: "12px 16px", fontSize: 13, color: "#9ca3af", margin: 0, textAlign: "center", fontStyle: "italic" }}>No options available</p>
-            ) : options.map((opt, i) => {
-              const optValue = opt.id ?? opt.value;
-              return (
-                <div key={i} onMouseDown={e => { e.preventDefault(); onSelect(optValue); setIsOpen(false); }}
-                  style={{
-                    padding: "10px 12px", fontSize: 13, cursor: "pointer", fontWeight: 600,
-                    background: String(value) === String(optValue) ? "#eff6ff" : "transparent",
-                    color: String(value) === String(optValue) ? "#2563eb" : "#374151"
-                  }}>
-                  {opt.label}
-                </div>
-              );
-            })}
+      {/* ── Center-Aligned Success Popup Modal (Portal Integration) ── */}
+      {popup.isOpen && createPortal(
+        <div className="dc-overlay">
+          <div className="dc-popup">
+            <div style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(59,130,246,0.06)", border: "1px solid rgba(59,130,246,0.25)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
+              <Check size={28} style={{ color: "#3B82F6", strokeWidth: 2.5 }} />
+            </div>
+            <h3 className="ucr-brand" style={{ fontSize: 17, fontWeight: 700, color: "#1e293b", textAlign: "center", margin: "0 0 8px", letterSpacing: "-0.01em" }}>Success</h3>
+            <p style={{ fontSize: 13, color: "#94a3b8", textAlign: "center", margin: "0 0 24px" }}>{popup.message}</p>
+            <button
+              type="button"
+              onClick={() => setPopup({ isOpen: false, message: "" })}
+              style={{
+                background: "linear-gradient(135deg, #3B82F6, #2563eb)", color: "#fff", border: "none", borderRadius: 8,
+                padding: "10px 0", width: "100%", fontSize: 13.5, fontWeight: 600, cursor: "pointer",
+                fontFamily: "'Plus Jakarta Sans', sans-serif", boxShadow: "0 4px 14px rgba(59,130,246,0.2)", transition: "all 0.15s"
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 6px 20px rgba(59,130,246,0.3)"; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 14px rgba(59,130,246,0.2)"; }}
+            >
+              Continue
+            </button>
           </div>
-        </Portal>
+        </div>,
+        document.body
       )}
     </div>
   );
 }
 
-function MultiDropdown({ label, options = [], selectedIds, onChange, disabled }) {
+const pagBtnStyle = { background: "#ffffff", border: "1px solid #e2e8f0", padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", color: "#475569", fontFamily: "'Inter', sans-serif" };
+
+// ─── Searchable Portal Configuration Single Dropdown Component ───
+function SingleDropdown({ label, options, value, onSelect, disabled }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [pos, setPos] = useState({ top: 0, left: 0, width: 0 });
+  const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
   const ref = useRef(null);
 
-  const openMenu = () => {
+  const selectedOption = options.find((option) => String(option.value) === String(value) || String(option.id) === String(value));
+  const hasVal = Boolean(value !== "" && value !== null && value !== undefined);
+  const active = isOpen || hasVal;
+  const borderColor = isOpen ? "#3B82F6" : hasVal ? "#bfdbfe" : "#e2e8f0";
+  const bgColor = disabled ? "#f8fafc" : isOpen ? "#eff6ff" : "#ffffff";
+  const shadow  = isOpen && !disabled ? "0 0 0 3px rgba(59,130,246,0.15)" : "none";
+  const labelColor = isOpen ? "#3B82F6" : hasVal ? "#64748b" : "#94a3b8";
+
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setIsOpen(false);
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
+
+  const handleTriggerClick = () => {
     if (disabled) return;
-    const r = ref.current?.getBoundingClientRect();
-    if (r) setPos({ top: r.bottom + 4, left: r.left, width: r.width });
-    setIsOpen(true);
+    if (!isOpen && ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      setCoords({
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX,
+        width: rect.width,
+      });
+    }
+    setIsOpen(!isOpen);
+  };
+
+  return (
+    <div ref={ref} style={{ position: "relative", width: "100%", userSelect: "none" }} className="dc-field-wrap">
+      <div
+        onClick={handleTriggerClick}
+        style={{
+          width: "100%", height: FH, borderRadius: 8, padding: "0 36px 0 12px", fontSize: 13, display: "flex",
+          alignItems: "center", border: `1.5px solid ${disabled ? "#f1f5f9" : borderColor}`, cursor: disabled ? "not-allowed" : "pointer",
+          background: bgColor + " !important", boxShadow: disabled ? "none" : shadow, transition: "all 0.18s", boxSizing: "border-box"
+        }}
+      >
+        <span style={{ flex: 1, fontWeight: 500, color: value ? "#1e293b" : "transparent", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontSize: 14 }}>
+          {selectedOption?.label || " "}
+        </span>
+        <div style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: isOpen ? "#3B82F6" : "#94a3b8", display: "flex", alignItems: "center" }}>
+          <ChevronDown size={15} style={{ transform: isOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }} />
+        </div>
+      </div>
+      <label
+        style={{
+          position: "absolute", left: 10, top: active ? 0 : "50%", transform: "translateY(-50%)", fontSize: active ? 11 : 13,
+          fontWeight: 500, color: disabled ? "#cbd5e1" : labelColor, background: active ? "#ffffff" : "transparent",
+          padding: active ? "0 5px" : "0", transition: "all 0.12s ease-out", pointerEvents: "none", zIndex: 20
+        }}
+      >
+        {label}
+      </label>
+
+      {isOpen && !disabled && createPortal(
+        <div className="dc-portal-dropdown" style={{ position: "absolute", top: coords.top + 4, left: coords.left, width: coords.width }}>
+          <ul style={{ maxHeight: 200, overflowY: "auto", margin: 0, padding: "4px 0", listStyle: "none", background: "#ffffff" }}>
+            {options.length === 0 ? (
+              <li style={{ padding: "12px 16px", fontSize: 12, color: "#94a3b8", fontStyle: "italic", textAlign: "center" }}>No options available</li>
+            ) : (
+              options.map((opt, i) => {
+                const optValue = opt.id ?? opt.value;
+                return (
+                  <li
+                    key={i}
+                    className={`dc-opt${String(value) === String(optValue) ? " selected" : ""}`}
+                    style={{
+                      padding: "10px 14px", fontSize: "13.5px", borderRadius: "8px", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px",
+                      color: String(value) === String(optValue) ? "#2563eb" : "#475569",
+                      backgroundColor: String(value) === String(optValue) ? "rgba(59,130,246,0.08)" : "#ffffff",
+                      fontWeight: String(value) === String(optValue) ? "600" : "500"
+                    }}
+                    onMouseDown={() => { onSelect(optValue); setIsOpen(false); }}
+                  >
+                    {String(value) === String(optValue) && <Check size={12} style={{ color: "#3B82F6", flexShrink: 0 }} />}
+                    {opt.label}
+                  </li>
+                );
+              })
+            )}
+          </ul>
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+}
+
+// ─── Searchable Portal Multi-Select Configuration Dropdown Component ───
+function MultiDropdown({ label, options = [], selectedIds, onChange, disabled }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setIsOpen(false);
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
+
+  const handleTriggerClick = () => {
+    if (disabled) return;
+    if (!isOpen && ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      setCoords({
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX,
+        width: rect.width,
+      });
+    }
+    setIsOpen(!isOpen);
   };
 
   const toggle = id => onChange(selectedIds.includes(id) ? selectedIds.filter(i => i !== id) : [...selectedIds, id]);
@@ -549,93 +765,75 @@ function MultiDropdown({ label, options = [], selectedIds, onChange, disabled })
 
   const hasValue = selectedIds.length > 0;
   const displayText = hasValue ? options.filter(o => selectedIds.includes(String(o.id ?? o.value))).map(o => o.label).join(", ") : "";
-  
+  const borderColor = isOpen ? "#3B82F6" : hasValue ? "#bfdbfe" : "#e2e8f0";
+  const bgColor = disabled ? "#f8fafc" : isOpen ? "#eff6ff" : "#ffffff";
+  const shadow  = isOpen && !disabled ? "0 0 0 3px rgba(59,130,246,0.15)" : "none";
+  const labelColor = isOpen ? "#3B82F6" : hasValue ? "#64748b" : "#94a3b8";
+  const active = isOpen || hasValue;
+
   return (
-    <div className="relative w-full select-none mt-1">
-      <div ref={ref} onClick={openMenu} style={{
-          width: "100%", height: FH, borderRadius: 8, padding: "0 12px", fontSize: 13, display: "flex",
-          alignItems: "center", border: `1.5px solid ${hasValue && !disabled ? (isOpen ? "#2563eb" : "#2563eb") : (isOpen ? "#d1d5db" : "#d1d5db")}`,
-          cursor: disabled ? "not-allowed" : "pointer", background: disabled ? "#f3f4f6" : "#fff",
-          transition: "border-color 0.2s"
-        }}>
-        <span style={{ flex: 1, fontWeight: 600, color: disabled ? "#6b7280" : (hasValue ? "#111827" : "transparent"), whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginRight: 8 }}>
+    <div ref={ref} style={{ position: "relative", width: "100%", userSelect: "none" }} className="dc-field-wrap">
+      <div
+        onClick={handleTriggerClick}
+        style={{
+          width: "100%", height: FH, borderRadius: 8, padding: "0 36px 0 12px", fontSize: 13, display: "flex",
+          alignItems: "center", border: `1.5px solid ${disabled ? "#f1f5f9" : borderColor}`, cursor: disabled ? "not-allowed" : "pointer",
+          background: bgColor + " !important", boxShadow: disabled ? "none" : shadow, transition: "all 0.18s", boxSizing: "border-box"
+        }}
+      >
+        <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 500, color: hasValue ? (disabled ? "#94a3b8" : "#1e293b") : "transparent", fontSize: 14 }}>
           {displayText || " "}
         </span>
-        <ChevronDown size={14} style={{ color: "#9ca3af", transform: isOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "0.2s", flexShrink: 0 }} />
+        <div style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: isOpen ? "#3B82F6" : "#94a3b8", display: "flex", alignItems: "center" }}>
+          <ChevronDown size={15} style={{ transform: isOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }} />
+        </div>
       </div>
-      <label style={{
-          position: "absolute", left: 10, top: (hasValue || isOpen) ? -9 : 12, fontSize: (hasValue || isOpen) ? 10 : 12,
-          fontWeight: 600, color: disabled ? "#9ca3af" : ((hasValue || isOpen) ? "#2563eb" : "#9ca3af"), background: disabled ? ((hasValue || isOpen) ? "#f3f4f6" : "transparent") : "#fff",
-          padding: "0 4px", transition: "0.2s", pointerEvents: "none",
-          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "calc(100% - 20px)"
-        }}>
+      <label
+        style={{
+          position: "absolute", left: 10, top: active ? 0 : "50%", transform: "translateY(-50%)", fontSize: active ? 11 : 13,
+          fontWeight: 500, color: disabled ? "#cbd5e1" : labelColor, background: active ? "#ffffff" : "transparent",
+          padding: active ? "0 5px" : "0", transition: "all 0.12s ease-out", pointerEvents: "none", zIndex: 20
+        }}
+      >
         {label}
       </label>
 
-      {isOpen && !disabled && (
-        <Portal top={pos.top} left={pos.left} width={pos.width} onClose={() => setIsOpen(false)}>
-          <div style={{ display: "flex", borderBottom: "1px solid #f3f4f6" }}>
-            <button type="button" onMouseDown={e => { e.preventDefault(); selectAll(); }} style={{ flex: 1, padding: "8px 0", fontSize: 12, fontWeight: 700, color: "#fff", background: "#2563eb", border: "none", cursor: "pointer" }}>Select All</button>
-            <button type="button" onMouseDown={e => { e.preventDefault(); clearAll(); }} style={{ flex: 1, padding: "8px 0", fontSize: 12, fontWeight: 700, color: "#fff", background: "#ef4444", border: "none", cursor: "pointer" }}>Clear All</button>
+      {isOpen && !disabled && createPortal(
+        <div className="dc-portal-dropdown" style={{ position: "absolute", top: coords.top + 4, left: coords.left, width: coords.width }}>
+          <div style={{ display: "flex", borderBottom: "1px solid #edf2f7", background: "#f8fafc" }}>
+            <button type="button" onMouseDown={e => { e.preventDefault(); selectAll(); }} style={{ flex: 1, padding: "10px", fontSize: 11, fontWeight: 700, background: "transparent", color: "#2563eb", border: "none", cursor: "pointer", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Select All</button>
+            <button type="button" onMouseDown={e => { e.preventDefault(); clearAll(); }} style={{ flex: 1, padding: "10px", fontSize: 11, fontWeight: 700, background: "transparent", color: "#ef4444", border: "none", cursor: "pointer", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Clear All</button>
           </div>
-          <div style={{ maxHeight: 250, overflowY: "auto", padding: "4px 0" }}>
+          <ul style={{ maxHeight: 200, overflowY: "auto", padding: "4px 0", margin: 0, listStyle: "none", background: "#ffffff" }}>
             {options.length === 0 ? (
-               <p style={{ padding: "12px 16px", fontSize: 13, color: "#9ca3af", margin: 0, textAlign: "center", fontStyle: "italic" }}>No options available</p>
-            ) : options.map((opt, idx) => {
-              const optId = String(opt.id ?? opt.value);
-              const isSel = selectedIds.includes(optId);
-              return (
-                <div key={idx} onMouseDown={e => { e.preventDefault(); toggle(optId); }} 
-                  style={{
-                    width: "100%", textAlign: "left", padding: "10px 16px", fontSize: 13, fontWeight: 600,
-                    display: "flex", alignItems: "center", gap: 10, background: isSel ? "#eff6ff" : "transparent",
-                    color: isSel ? "#2563eb" : "#4b5563", border: "none", cursor: "pointer"
-                  }}>
-                  <div style={{
-                      width: 16, height: 16, borderRadius: 4, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
-                      border: isSel ? "2px solid #2563eb" : "2px solid #d1d5db", background: isSel ? "#2563eb" : "#fff"
-                    }}>
-                    {isSel && <svg viewBox="0 0 10 8" style={{ width: 10, height: 8 }} fill="none"><path d="M1 4l2.5 2.5L9 1" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                  </div>
-                  <span style={{ fontWeight: 600 }}>{opt.label}</span>
-                </div>
-              );
-            })}
-          </div>
-        </Portal>
+              <li style={{ padding: "12px 16px", fontSize: 12, color: "#94a3b8", fontStyle: "italic", textAlign: "center" }}>No options available</li>
+            ) : (
+              options.map((opt, idx) => {
+                const optId = String(opt.id ?? opt.value);
+                const isSel = selectedIds.includes(optId);
+                return (
+                  <li
+                    key={idx}
+                    className={`dc-opt${isSel ? " selected" : ""}`}
+                    style={{
+                      padding: "10px 14px", fontSize: "13.5px", borderRadius: "8px", cursor: "pointer",
+                      display: "flex", alignItems: "center", gap: "8px",
+                      color: isSel ? "#2563eb" : "#475569",
+                      backgroundColor: isSel ? "rgba(59,130,246,0.08)" : "#ffffff",
+                      fontWeight: isSel ? "600" : "500"
+                    }}
+                    onMouseDown={(e) => { e.preventDefault(); toggle(optId); }}
+                  >
+                    <input type="checkbox" checked={isSel} readOnly style={{ accentColor: "#3B82F6", cursor: "pointer", marginRight: 4 }} />
+                    {opt.label}
+                  </li>
+                );
+              })
+            )}
+          </ul>
+        </div>,
+        document.body
       )}
-    </div>
-  );
-}
-
-function Portal({ top, left, width, onClose, children }) {
-  const ref = useRef(null);
-  
-  useEffect(() => {
-    const t = setTimeout(() => {
-      const h = e => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
-      document.addEventListener("mousedown", h);
-      return () => document.removeEventListener("mousedown", h);
-    }, 10);
-    return () => clearTimeout(t);
-  }, [onClose]);
-  
-  useEffect(() => {
-    const handleScroll = (e) => {
-      if (ref.current && ref.current.contains(e.target)) return;
-      onClose();
-    };
-    window.addEventListener("scroll", handleScroll, true);
-    window.addEventListener("resize", onClose);
-    return () => {
-      window.removeEventListener("scroll", handleScroll, true);
-      window.removeEventListener("resize", onClose);
-    };
-  }, [onClose]);
-  
-  return (
-    <div ref={ref} style={{ position: "fixed", top, left, width, zIndex: 99999 }} className="dropdown-portal bg-white border border-[#e5e7eb] rounded-lg shadow-xl overflow-hidden">
-      {children}
     </div>
   );
 }

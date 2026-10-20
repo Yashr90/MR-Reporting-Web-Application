@@ -6,6 +6,250 @@ import {
 } from "lucide-react";
 import api from "../../../services/api";
 
+/* ─── Premium UI Styles & Utilities ──────────────────────────────────────── */
+const STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght=500;600;700;800&family=Inter:wght=400;500;600;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  .dc-wrap {
+    font-family: 'Inter', sans-serif;
+    width: 100%;
+  }
+
+  .ucr-brand { font-family: 'Plus Jakarta Sans', sans-serif; }
+
+  /* ── Single Unified Card Container (No background template bleed) ── */
+  .dc-card {
+    background: #ffffff;
+    border: 1px solid #edf2f7;
+    border-radius: 16px;
+    isolation: isolate;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+    position: relative;
+    overflow: visible;
+  }
+
+  /* ── Card Header ── */
+  .dc-header {
+    padding: 24px 28px 16px;
+    background: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+    border-radius: 16px 16px 16px 16px !important;
+  }
+
+  .dc-page-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #3B82F6, #2563eb);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 3px 8px rgba(59,130,246,0.2);
+    flex-shrink: 0;
+  }
+
+  /* ── Form Body ── */
+  .dc-body { padding: 20px 28px 24px; background: #ffffff; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px; }
+
+  /* ── Form Footer ── */
+  .dc-footer {
+    padding: 20px 28px 24px;
+    background: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    border-radius: 0 0 16px 16px;
+    border-top: 1px solid #f1f5f9;
+  }
+
+  .dc-divider {
+    border: none;
+    border-top: 1px solid #f1f5f9;
+    margin: 24px 0 28px;
+  }
+
+  /* ── Responsive Input Grids ── */
+  .dc-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
+    margin-bottom: 25px;
+  }
+
+  @media(max-width: 1200px) {
+    .dc-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+  @media(max-width: 900px) {
+    .dc-grid { grid-template-columns: repeat(2, 1fr); gap: 20px; }
+  }
+  @media(max-width: 640px) {
+    .dc-grid { grid-template-columns: 1fr; gap: 20px; }
+    .dc-body { padding: 20px 16px; }
+    .dc-header { padding: 20px 16px 12px; }
+    .dc-footer { padding: 16px; }
+    .dc-submit-btn { width: 100%; justify-content: center !important; }
+  }
+
+  /* ── Dropdown list ── */
+  .dc-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    width: 100%;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+    z-index: 9999 !important;
+    overflow: hidden;
+  }
+
+  .dc-dropdown ul {
+    max-height: 220px;
+    overflow-y: auto;
+    padding: 6px;
+    margin: 0;
+    list-style: none;
+    scrollbar-width: thin;
+    scrollbar-color: #e2e8f0 transparent;
+  }
+
+  .dc-dropdown ul::-webkit-scrollbar { width: 4px; }
+  .dc-dropdown ul::-webkit-scrollbar-track { background: transparent; }
+  .dc-dropdown ul::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
+
+  .dc-opt {
+    padding: 8px 12px;
+    font-size: 13.5px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #475569;
+    transition: all 0.12s;
+    font-weight: 500;
+  }
+  .dc-opt:hover   { background: rgba(59,130,246,0.06); color: #2563eb; }
+  .dc-opt.selected { background: rgba(59,130,246,0.08); color: #2563eb; font-weight: 600; }
+
+  /* ── Forced Browser Autocomplete/Autofill Override ── */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover, 
+  input:-webkit-autofill:focus, 
+  input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+    box-shadow: 0 0 0 1000px #ffffff inset !important;
+    -webkit-text-fill-color: #1e293b !important;
+    transition: background-color 5000s ease-in-out 0s;
+  }
+
+  /* ── System Error Banner ── */
+  .dc-error-banner {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 12px;
+    padding: 12px 16px;
+    color: #dc2626;
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  /* ── Success Banner ── */
+  .dc-success-banner {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 12px;
+    padding: 12px 16px;
+    color: #16a34a;
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  /* ── Submission Button (Clearly Blue & Solidly Visible) ── */
+  .dc-submit-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    background: #2563eb !important;
+    color: #fff !important;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+    transition: all 0.2s;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    letter-spacing: 0.01em;
+    height: 40px;
+    opacity: 1 !important;
+  }
+  .dc-submit-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.45);
+    background: #1d4ed8 !important;
+  }
+  .dc-submit-btn:disabled { background: #93c5fd !important; color: #ffffff !important; cursor: not-allowed; box-shadow: none; opacity: 0.8 !important; }
+
+  .dc-overlay {
+    position: fixed; inset: 0; z-index: 1000;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(15,23,42,0.3);
+    backdrop-filter: blur(4px);
+    padding: 16px;
+  }
+
+  .dc-popup {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.1);
+    padding: 36px 32px;
+    max-width: 360px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    animation: dc-zoom 0.22s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  .dc-field-wrap { display: flex; flex-direction: column; gap: 4px; position: relative; }
+  .dc-field-error { font-size: 11px; color: #dc2626; font-weight: 500; padding-left: 4px; }
+
+  @keyframes dc-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+  @keyframes dc-zoom { from{opacity:0;transform:scale(0.88)} to{opacity:1;transform:scale(1)} }
+`;
+
+const FH = 40;
+
+const fieldBase = {
+  width: "100%",
+  height: FH,
+  borderRadius: 8,
+  fontSize: 14,
+  color: "#1e293b",
+  outline: "none",
+  boxSizing: "border-box",
+  transition: "all 0.18s",
+  fontFamily: "'Inter', sans-serif",
+};
+
 export default function ProductCreation() {
   const [isLoading,    setIsLoading]    = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -122,66 +366,45 @@ export default function ProductCreation() {
   const canSubmit = formData.productName.trim() && formData.mrp && formData.ptr && formData.ptw;
 
   return (
-    <div style={{ width: "100%", paddingBottom: 48, fontFamily: "Inter, sans-serif" }}>
+    <div className="dc-wrap">
+      <style>{STYLES}</style>
 
-      {/* ── Main Card ───────────────────────────────────────────────────── */}
-      <div style={{
-        background: "#fff", borderRadius: 16,
-        boxShadow: "0 1px 4px rgba(0,0,0,0.07)",
-        border: "1px solid #f3f4f6", overflow: "hidden",
-      }}>
+      {error && (
+        <div className="dc-error-banner">
+          <AlertCircle size={15} style={{ flexShrink: 0 }} />
+          {error}
+        </div>
+      )}
+      {successMsg && (
+        <div className="dc-success-banner">
+          <CheckCircle2 size={15} style={{ flexShrink: 0 }} />
+          {successMsg}
+        </div>
+      )}
 
+      {/* ── Single Unified Card Container ── */}
+      <div className="dc-card">
         {/* Header */}
-        <div style={{
-          padding: "16px 24px", borderBottom: "1px solid #f3f4f6",
-          display: "flex", alignItems: "center", gap: 12,
-        }}>
-          <div style={{
-            width: 36, height: 36, borderRadius: 10,
-            background: "#eff6ff", border: "1px solid #dbeafe",
-            display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-          }}>
-            <Package size={17} style={{ color: "#2563eb" }} />
-          </div>
-          <div>
-            <h2 style={{ fontSize: 15, fontWeight: 700, color: "#111827", margin: 0 }}>
-              Product Creation Form
-            </h2>
-            <p style={{ fontSize: 11, color: "#6b7280", margin: 0, marginTop: 2 }}>
-              Fill in product details and rate information.
-            </p>
+        <div className="dc-header">
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div className="dc-page-icon">
+              <Package size={16} color="#fff" />
+            </div>
+            <div>
+              <h1 className="ucr-brand" style={{ fontSize: 16, fontWeight: 700, color: "#1e293b", letterSpacing: "-0.01em", lineHeight: 1.2 }}>Product Creation Form</h1>
+              <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>Fill in product details and rate information.</p>
+            </div>
           </div>
         </div>
 
-        {/* Body */}
-        <div style={{ padding: "24px", display: "flex", flexDirection: "column", gap: 28 }}>
+        <form onSubmit={handleSubmit}>
+          {/* Form Body Area */}
+          <div className="dc-body">
 
-          {/* Alerts */}
-          {error && (
-            <div style={{
-              background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 12,
-              padding: "10px 16px", display: "flex", alignItems: "center",
-              gap: 10, color: "#dc2626", fontSize: 13, fontWeight: 600,
-            }}>
-              <AlertCircle size={16} /> {error}
-            </div>
-          )}
-          {successMsg && (
-            <div style={{
-              background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 12,
-              padding: "10px 16px", display: "flex", alignItems: "center",
-              gap: 10, color: "#16a34a", fontSize: 13, fontWeight: 600,
-            }}>
-              <CheckCircle2 size={16} /> {successMsg}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 28 }}>
-
-            {/* Select State */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 300px))", gap: 16 }}>
+            {/* Geography / State Selector */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 300px))", gap: 16, marginBottom: 5 }}>
               <MultiStateSelect
-                label="SELECT STATE *"
+                label="Select State"
                 states={states}
                 selectedIds={formData.selectedStateIds}
                 onToggle={handleStateToggle}
@@ -190,199 +413,145 @@ export default function ProductCreation() {
               />
             </div>
 
-            {/* Divider */}
-            <div style={{ borderTop: "1px solid #f3f4f6" }} />
+            <hr className="dc-divider" />
 
             {/* Product Information */}
-            <section style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <SectionLabel text="Product Information" />
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
-                <FloatingInput label="PRODUCT NAME *"       name="productName"        value={formData.productName}        onChange={handleInputChange} required icon={Package} />
-                <FloatingInput label="PRODUCT CODE"         name="productCode"        value={formData.productCode}        onChange={handleInputChange} icon={Hash} />
-                <FloatingInput label="PRODUCT TYPE"         name="productType"        value={formData.productType}        onChange={handleInputChange} icon={Tag} />
-                <FloatingInput label="PRODUCT SHORT NAME"   name="productShortName"   value={formData.productShortName}   onChange={handleInputChange} icon={Layers} />
-                <FloatingInput label="PRODUCT PACKAGE SIZE" name="productPackageSize" value={formData.productPackageSize} onChange={handleInputChange} icon={FlaskConical} />
-                <FloatingInput label="SAMPLE PACKAGE SIZE"  name="samplePackageSize"  value={formData.samplePackageSize}  onChange={handleInputChange} icon={FlaskConical} />
-              </div>
-            </section>
+            <SectionLabel text="Product Information" />
+            <div className="dc-grid">
+              <FloatingInput label="Product Name" name="productName" value={formData.productName} onChange={handleInputChange} required icon={Package} />
+              <FloatingInput label="Product Code" name="productCode" value={formData.productCode} onChange={handleInputChange} icon={Hash} />
+              <FloatingInput label="Product Type" name="productType" value={formData.productType} onChange={handleInputChange} icon={Tag} />
+              <FloatingInput label="Product Short Name" name="productShortName" value={formData.productShortName} onChange={handleInputChange} icon={Layers} />
+            </div>
+            <div className="dc-grid">
+              <FloatingInput label="Product Package Size" name="productPackageSize" value={formData.productPackageSize} onChange={handleInputChange} icon={FlaskConical} />
+              <FloatingInput label="Sample Package Size" name="samplePackageSize" value={formData.samplePackageSize} onChange={handleInputChange} icon={FlaskConical} />
+            </div>
 
-            {/* Divider */}
-            <div style={{ borderTop: "1px solid #f3f4f6" }} />
+            <hr className="dc-divider" />
 
             {/* Product Rate Information */}
-            <section style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <SectionLabel text="Product Rate Information" />
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
-                <FloatingInput label="PTW *"        name="ptw"        value={formData.ptw}        onChange={handleInputChange} type="number" icon={DollarSign} error={fieldErrors.ptw} required />
-                <FloatingInput label="PTR *"        name="ptr"        value={formData.ptr}        onChange={handleInputChange} type="number" icon={DollarSign} error={fieldErrors.ptr} required />
-                <FloatingInput label="MRP *"        name="mrp"        value={formData.mrp}        onChange={handleInputChange} type="number" icon={DollarSign} error={fieldErrors.mrp} required />
-                <FloatingInput label="SAMPLE RATE"  name="sampleRate" value={formData.sampleRate} onChange={handleInputChange} type="number" icon={DollarSign} />
-                <FloatingInput label="INCLUDE VAT"  name="includeVat" value={formData.includeVat} onChange={handleInputChange} icon={Tag} />
-              </div>
-            </section>
-
-            {/* Divider */}
-            <div style={{ borderTop: "1px solid #f3f4f6" }} />
-
-            {/* Submit */}
-            <div>
-              <button
-                type="submit"
-                disabled={!canSubmit || isSubmitting}
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: 8,
-                  padding: "9px 28px", borderRadius: 9, border: "none",
-                  fontSize: 13, fontWeight: 700, cursor: canSubmit && !isSubmitting ? "pointer" : "not-allowed",
-                  background: canSubmit && !isSubmitting ? "#2563eb" : "#f3f4f6",
-                  color: canSubmit && !isSubmitting ? "#fff" : "#9ca3af",
-                  boxShadow: canSubmit && !isSubmitting ? "0 2px 8px rgba(37,99,235,0.25)" : "none",
-                  opacity: isSubmitting ? 0.7 : 1,
-                  transition: "all 0.15s",
-                }}
-              >
-                {isSubmitting
-                  ? <Loader2 size={15} style={{ animation: "spin 1s linear infinite" }} />
-                  : <Check size={15} />}
-                Submit Product
-              </button>
+            <SectionLabel text="Product Rate Information" />
+            <div className="dc-grid">
+              <FloatingInput label="PTW" name="ptw" value={formData.ptw} onChange={handleInputChange} type="text" icon={DollarSign} error={fieldErrors.ptw} required />
+              <FloatingInput label="PTR" name="ptr" value={formData.ptr} onChange={handleInputChange} type="text" icon={DollarSign} error={fieldErrors.ptr} required />
+              <FloatingInput label="MRP" name="mrp" value={formData.mrp} onChange={handleInputChange} type="text" icon={DollarSign} error={fieldErrors.mrp} required />
+              <FloatingInput label="Sample Rate" name="sampleRate" value={formData.sampleRate} onChange={handleInputChange} type="text" icon={DollarSign} />
+            </div>
+            <div className="dc-grid">
+              <FloatingInput label="Include VAT" name="includeVat" value={formData.includeVat} onChange={handleInputChange} icon={Tag} />
             </div>
 
-          </form>
-        </div>
+          </div>
+
+          {/* Action Footer */}
+          <div className="dc-footer">
+            <button
+              type="submit"
+              disabled={!canSubmit || isSubmitting}
+              className="dc-submit-btn"
+            >
+              {isSubmitting
+                ? <Loader2 size={14} style={{ animation: "dc-spin 1s linear infinite" }} />
+                : <Check size={14} />}
+              Submit Product
+            </button>
+          </div>
+        </form>
       </div>
 
-      {/* ── Success Popup ────────────────────────────────────────────────── */}
+      {/* ── Success Popup ── */}
       {popup.isOpen && (
-        <div style={{
-          position: "fixed", inset: 0, zIndex: 50,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)",
-        }}>
-          <div style={{
-            background: "#fff", borderRadius: 16,
-            boxShadow: "0 20px 60px rgba(0,0,0,0.18)",
-            padding: "32px 28px", maxWidth: 320, width: "100%",
-            margin: "0 16px", display: "flex", flexDirection: "column",
-            alignItems: "center",
-          }}>
-            <div style={{
-              width: 64, height: 64, borderRadius: "50%",
-              background: "#eff6ff", border: "4px solid #dbeafe",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              marginBottom: 20,
-            }}>
-              <Check size={30} style={{ color: "#2563eb" }} strokeWidth={3} />
+        <div className="dc-overlay">
+          <div className="dc-popup">
+            <div style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(59,130,246,0.06)", border: "1px solid rgba(59,130,246,0.25)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
+              <Check size={28} style={{ color: "#3B82F6", strokeWidth: 2.5 }} />
             </div>
-            <h3 style={{ fontSize: 15, fontWeight: 700, color: "#111827", textAlign: "center", marginBottom: 24 }}>
-              {popup.message}
-            </h3>
+            <h3 className="ucr-brand" style={{ fontSize: 17, fontWeight: 700, color: "#1e293b", textAlign: "center", margin: "0 0 8px", letterSpacing: "-0.01em" }}>Success</h3>
+            <p style={{ fontSize: 13, color: "#94a3b8", textAlign: "center", margin: "0 0 24px" }}>{popup.message}</p>
             <button
               onClick={() => setPopup({ isOpen: false, message: "" })}
               style={{
-                background: "#2563eb", color: "#fff", width: "100%",
-                padding: "10px 0", borderRadius: 9, border: "none",
-                fontSize: 14, fontWeight: 700, cursor: "pointer",
-                boxShadow: "0 2px 8px rgba(37,99,235,0.25)",
-                transition: "all 0.15s",
+                background: "linear-gradient(135deg, #3B82F6, #2563eb)", color: "#fff", border: "none", borderRadius: 8,
+                padding: "10px 0", width: "100%", fontSize: 13.5, fontWeight: 600, cursor: "pointer",
+                fontFamily: "'Plus Jakarta Sans', sans-serif", boxShadow: "0 4px 14px rgba(59,130,246,0.2)", transition: "all 0.15s"
               }}
+              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 6px 20px rgba(59,130,246,0.3)"; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 14px rgba(59,130,246,0.2)"; }}
             >
-              OK
+              Continue
             </button>
           </div>
         </div>
       )}
-
-      <style>{`@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }`}</style>
     </div>
   );
 }
 
-// ─── SectionLabel ─────────────────────────────────────────────────────────────
-function SectionLabel({ text }) {
+/* ─── Section Label ──────────────────────────────────────────────────────── */
+function SectionLabel({ text, icon }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-      <span style={{ fontSize: 13, fontWeight: 700, color: "#111827", whiteSpace: "nowrap" }}>{text}</span>
-      <div style={{ flex: 1, height: 1, background: "#e5e7eb" }} />
+    <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20, marginTop: 4 }}>
+      <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 14px", background: "rgba(59,130,246,0.06)", border: "1px solid rgba(59,130,246,0.12)", borderRadius:100, whiteSpace: "nowrap" }}>
+        {icon && <span style={{ color: "#3B82F6", display: "flex", alignItems: "center" }}>{icon}</span>}
+        <span style={{ fontSize: 11, fontWeight: 600, color: "#2563eb", letterSpacing: "0.04em" }}>{text}</span>
+      </div>
+      <div style={{ flex: 1, height: 1, background: "#f1f5f9" }} />
     </div>
   );
 }
 
-// ─── FloatingInput ────────────────────────────────────────────────────────────
+/* ─── Floating Text Input ─────────────────────────────────────────────────── */
 function FloatingInput({ label, name, type = "text", value, onChange, required, disabled, icon: Icon, error }) {
   const [focus, setFocus] = useState(false);
   const hasVal = Boolean(value?.toString().trim());
   const active = focus || hasVal;
 
-  const borderColor = error
-    ? focus ? "#ef4444" : "#f87171"
-    : focus ? "#2563eb" : hasVal ? "#2563eb" : "#d1d5db";
-
-  const boxShadow = error
-    ? focus ? "0 0 0 3px rgba(239,68,68,0.08)" : "none"
-    : focus ? "0 0 0 3px rgba(37,99,235,0.08)" : "none";
-
-  const labelColor = error
-    ? "#ef4444"
-    : focus ? "#2563eb" : hasVal ? "#6b7280" : "#9ca3af";
+  const borderColor = error ? "#fca5a5" : focus ? "#3B82F6" : hasVal ? "#bfdbfe" : "#e2e8f0";
+  const bgColor = disabled ? "#f8fafc" : focus ? "#eff6ff" : "#ffffff";
+  const shadow  = focus && !disabled ? (error ? "0 0 0 3px rgba(239,68,68,0.12)" : "0 0 0 3px rgba(59,130,246,0.15)") : "none";
+  const labelColor = error ? "#dc2626" : focus ? "#3B82F6" : hasVal ? "#64748b" : "#94a3b8";
 
   return (
-    <div style={{ width: "100%", display: "flex", flexDirection: "column" }}>
-      <div style={{ position: "relative", width: "100%", height: 38 }}>
+    <div className="dc-field-wrap">
+      <div style={{ position: "relative", width: "100%", height: FH }}>
         <input
-          type={type} id={name} name={name}
-          value={value || ""} onChange={onChange}
-          required={required} placeholder=" " disabled={disabled}
-          onFocus={() => setFocus(true)}
-          onBlur={() => setFocus(false)}
+          type={type} id={name} name={name} value={value || ""} onChange={onChange}
+          required={required} disabled={disabled}
+          onFocus={() => setFocus(true)} onBlur={() => setFocus(false)}
+          placeholder=" "
           style={{
-            width: "100%", height: "100%", borderRadius: 8,
-            padding: "0 36px 0 12px",
-            fontSize: 13, color: "#111827", outline: "none",
-            boxSizing: "border-box",
-            background: disabled ? "#f9fafb" : "#fff",
+            ...fieldBase,
+            padding: Icon ? "0 36px 0 12px" : "0 12px",
+            background: bgColor,
             border: `1.5px solid ${borderColor}`,
-            boxShadow,
-            transition: "all 0.15s",
-            cursor: disabled ? "not-allowed" : "text",
+            boxShadow: shadow,
+            color: disabled ? "#94a3b8" : "#1e293b",
           }}
         />
-        {/* Floating label */}
-        <label
-          htmlFor={name}
-          style={{
-            position: "absolute", left: 10, pointerEvents: "none", zIndex: 10,
-            transition: "all 0.15s", fontWeight: 600, letterSpacing: "0.03em",
-            top: active ? -9 : 10,
-            fontSize: active ? 10 : 13,
-            color: active ? labelColor : "#9ca3af",
-            background: active ? "#fff" : "transparent",
-            padding: active ? "0 4px" : "0",
-          }}
-        >
-          {label}
-        </label>
-        {/* Icon */}
+        <label style={{
+          position: "absolute", left: 10, pointerEvents: "none", zIndex: 20,
+          transition: "all 0.12s ease-out", fontWeight: 500, top: active ? "0" : "50%",
+          transform: active ? "translateY(-50%)" : "translateY(-50%)", fontSize: active ? 11 : 13,
+          color: disabled ? "#cbd5e1" : labelColor, background: active ? "#ffffff" : "transparent",
+          padding: active ? "0 5px" : "0", letterSpacing: active ? "0.02em" : "0",
+        }}>{label}{required ? " *" : ""}</label>
+
         {Icon && (
           <div style={{
-            position: "absolute", right: 10, top: "50%",
-            transform: "translateY(-50%)", pointerEvents: "none",
-            color: error ? "#f87171" : hasVal ? "#2563eb" : "#9ca3af",
-            display: "flex", alignItems: "center",
+            position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)",
+            color: error ? "#dc2626" : focus ? "#3B82F6" : "#94a3b8", display: "flex", alignItems: "center", pointerEvents: "none"
           }}>
             <Icon size={15} />
           </div>
         )}
       </div>
-      {error && (
-        <p style={{ color: "#ef4444", fontSize: 11, marginTop: 4, fontWeight: 600, paddingLeft: 4 }}>
-          {label.replace(" *", "")} is required!!!
-        </p>
-      )}
+      {error && <p className="dc-field-error">{error}</p>}
     </div>
   );
 }
 
-// ─── MultiStateSelect ─────────────────────────────────────────────────────────
+/* ─── Searchable Multi-Select State Dropdown Component ─── */
 function MultiStateSelect({ label, states, selectedIds, onToggle, onSelectAll, onDeselectAll }) {
   const [isOpen, setIsOpen] = useState(false);
   const ref = useRef(null);
@@ -401,120 +570,61 @@ function MultiStateSelect({ label, states, selectedIds, onToggle, onSelectAll, o
     ? states.filter(s => selectedIds.includes(s.id)).map(s => s.state_name).join(", ")
     : "";
 
-  const borderColor = isOpen ? "#2563eb" : hasValue ? "#2563eb" : "#d1d5db";
-  const boxShadow   = isOpen ? "0 0 0 3px rgba(37,99,235,0.08)" : "none";
+  const borderColor = isOpen ? "#3B82F6" : hasValue ? "#bfdbfe" : "#e2e8f0";
+  const bgColor      = isOpen ? "#eff6ff" : "#ffffff";
+  const shadow      = isOpen ? "0 0 0 3px rgba(59,130,246,0.15)" : "none";
+  const labelColor  = isOpen ? "#3B82F6" : hasValue ? "#64748b" : "#94a3b8";
 
   return (
-    <div ref={ref} style={{ position: "relative", width: "100%", userSelect: "none", zIndex: isOpen ? 100 : 1 }}>
-
-      {/* Trigger */}
+    <div ref={ref} style={{ position: "relative", width: "100%", userSelect: "none", zIndex: isOpen ? 100 : 1 }} className="dc-field-wrap">
+      {/* Trigger Area */}
       <div
         onClick={() => setIsOpen(!isOpen)}
         style={{
-          width: "100%", height: 38, borderRadius: 8,
-          padding: "0 36px 0 12px",
+          width: "100%", height: FH, borderRadius: 8, padding: "0 36px 0 12px",
           fontSize: 13, display: "flex", alignItems: "center",
-          cursor: "pointer", background: "#fff",
+          cursor: "pointer", background: bgColor,
           border: `1.5px solid ${borderColor}`,
-          boxShadow,
-          transition: "all 0.15s", boxSizing: "border-box",
+          boxShadow: shadow, transition: "all 0.18s", boxSizing: "border-box",
         }}
       >
-        <span style={{
-          flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-          fontWeight: 600, color: hasValue ? "#111827" : "transparent",
-        }}>
+        <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 500, color: hasValue ? "#1e293b" : "transparent", fontSize: 14 }}>
           {displayText || " "}
         </span>
-        <div style={{
-          position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)",
-          display: "flex", alignItems: "center", gap: 2, pointerEvents: "none",
-          color: isOpen ? "#2563eb" : "#9ca3af",
-        }}>
-          <MapPin size={13} style={{ opacity: 0.7 }} />
-          <ChevronDown
-            size={14}
-            style={{ transform: isOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }}
-          />
+        <div style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: isOpen ? "#3B82F6" : "#94a3b8", transition: "all 0.2s", display: "flex", alignItems: "center" }}>
+          <MapPin size={15} style={{ marginRight: 4, opacity: 0.7 }} />
+          <ChevronDown size={14} style={{ transform: isOpen ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.2s" }} />
         </div>
       </div>
 
-      {/* Floating label */}
+      {/* Floating Label */}
       <label style={{
-        position: "absolute", left: 10, pointerEvents: "none", zIndex: 11,
-        transition: "all 0.15s", fontWeight: 600, letterSpacing: "0.03em",
-        top: active ? -9 : 10,
-        fontSize: active ? 10 : 13,
-        color: isOpen ? "#2563eb" : hasValue ? "#6b7280" : "#9ca3af",
-        background: active ? "#fff" : "transparent",
-        padding: active ? "0 4px" : "0",
-      }}>
-        {label}
-      </label>
+        position: "absolute", left: 10, pointerEvents: "none", zIndex: 20,
+        transition: "all 0.12s ease-out", fontWeight: 500, top: active ? "0" : "50%",
+        transform: active ? "translateY(-50%)" : "translateY(-50%)", fontSize: active ? 11 : 13,
+        color: labelColor, background: active ? "#ffffff" : "transparent",
+        padding: active ? "0 5px" : "0", letterSpacing: active ? "0.02em" : "0",
+      }}>{label}</label>
 
-      {/* Dropdown */}
+      {/* Dropdown Container */}
       {isOpen && (
-        <div style={{
-          position: "absolute", top: "calc(100% + 5px)", left: 0, width: "100%",
-          background: "#fff", border: "1.5px solid #e5e7eb", borderRadius: 10,
-          boxShadow: "0 8px 24px rgba(0,0,0,0.12)", zIndex: 200, overflow: "hidden",
-        }}>
-          {/* Select/Deselect All */}
-          <div style={{ display: "flex", borderBottom: "1px solid #f3f4f6" }}>
-            <button
-              type="button"
-              onMouseDown={e => { e.preventDefault(); onSelectAll(); }}
-              style={{
-                flex: 1, padding: "8px 0", fontSize: 12, fontWeight: 700,
-                color: "#fff", background: "#2563eb", border: "none",
-                cursor: "pointer", transition: "background 0.15s",
-              }}
-            >
-              Select All
-            </button>
-            <button
-              type="button"
-              onMouseDown={e => { e.preventDefault(); onDeselectAll(); }}
-              style={{
-                flex: 1, padding: "8px 0", fontSize: 12, fontWeight: 700,
-                color: "#fff", background: "#ef4444", border: "none",
-                cursor: "pointer", transition: "background 0.15s",
-              }}
-            >
-              Deselect All
-            </button>
+        <div className="dc-dropdown">
+          <div style={{ display: "flex", borderBottom: "1px solid #edf2f7", background: "#f8fafc" }}>
+            <button type="button" style={{ flex: 1, padding: "10px", fontSize: 11, fontWeight: 700, background: "transparent", color: "#2563eb", border: "none", cursor: "pointer", fontFamily: "'Plus Jakarta Sans', sans-serif" }} onMouseDown={(e) => { e.preventDefault(); onSelectAll(); }}>Select All</button>
+            <button type="button" style={{ flex: 1, padding: "10px", fontSize: 11, fontWeight: 700, background: "transparent", color: "#ef4444", border: "none", cursor: "pointer", fontFamily: "'Plus Jakarta Sans', sans-serif" }} onMouseDown={(e) => { e.preventDefault(); onDeselectAll(); }}>Deselect All</button>
           </div>
-
-          {/* List */}
-          <ul style={{ maxHeight: 220, overflowY: "auto", padding: "4px 0", margin: 0, listStyle: "none" }}>
+          <ul>
+            {states.length === 0 && <li style={{ padding: "12px", fontSize: 12, color: "#94a3b8", fontStyle: "italic" }}>No options available</li>}
             {states.map(s => {
               const isSel = selectedIds.includes(s.id);
               return (
                 <li
                   key={s.id}
-                  onMouseDown={e => { e.preventDefault(); e.stopPropagation(); onToggle(s.id); }}
-                  style={{
-                    padding: "9px 12px", fontSize: 13, cursor: "pointer",
-                    display: "flex", alignItems: "center", gap: 10,
-                    background: isSel ? "#eff6ff" : "transparent",
-                    transition: "background 0.1s",
-                  }}
-                  onMouseEnter={e => { if (!isSel) e.currentTarget.style.background = "#f9fafb"; }}
-                  onMouseLeave={e => { if (!isSel) e.currentTarget.style.background = "transparent"; }}
+                  className={`dc-opt${isSel ? " selected" : ""}`}
+                  onMouseDown={(e) => { e.preventDefault(); onToggle(s.id); }}
                 >
-                  {/* Custom checkbox */}
-                  <div style={{
-                    width: 14, height: 14, borderRadius: 4, flexShrink: 0,
-                    border: isSel ? "none" : "1.5px solid #d1d5db",
-                    background: isSel ? "#2563eb" : "transparent",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    transition: "all 0.15s",
-                  }}>
-                    {isSel && <Check size={9} style={{ color: "#fff" }} />}
-                  </div>
-                  <span style={{ fontWeight: isSel ? 600 : 400, color: isSel ? "#2563eb" : "#374151" }}>
-                    {s.state_name}
-                  </span>
+                  <input type="checkbox" checked={isSel} readOnly style={{ accentColor: "#3B82F6", cursor: "pointer", marginRight: 8 }} />
+                  {s.state_name}
                 </li>
               );
             })}

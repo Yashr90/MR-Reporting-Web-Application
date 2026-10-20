@@ -1,70 +1,307 @@
 import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import {
   Loader2,
   AlertCircle,
-  CheckCircle2,
   ChevronDown,
-  Check,
-  Trash2,
   SlidersHorizontal,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Check,
+  Trash2,
+  Search,
+  FileSpreadsheet
 } from "lucide-react";
 import api from "../../../services/api";
 
-// ─── Global responsive styles ─────────────────────────────────────────────────
-const STYLES = `
-  *, *::before, *::after { box-sizing: border-box; }
-  .ucr-wrap  { width:100%; padding-bottom:48px; font-family:Inter,sans-serif; overflow-x: hidden; }
-  .ucr-card  { background:#fff; border-radius:16px; box-shadow:0 1px 4px rgba(0,0,0,0.07); border:1px solid #f3f4f6; overflow:visible; margin-bottom: 24px; }
-  .ucr-header{ padding:16px 20px; border-bottom:1px solid #f3f4f6; display:flex; align-items:center; gap:12px; }
-  .ucr-body  { padding:24px; }
-  .ucr-footer{ padding:14px 24px; background:#f9fafb; border-top:1px solid #f3f4f6; display:flex; align-items:center; justify-content:flex-end; border-radius:0 0 16px 16px; flex-wrap: wrap; gap: 12px; }
+// ─── Constants ──────────────────────────────────────────────────────────────
+const MONTHS = [
+  { value: 1,  label: "January"   }, { value: 2,  label: "February"  },
+  { value: 3,  label: "March"     }, { value: 4,  label: "April"     },
+  { value: 5,  label: "May"       }, { value: 6,  label: "June"      },
+  { value: 7,  label: "July"      }, { value: 8,  label: "August"    },
+  { value: 9,  label: "September" }, { value: 10, label: "October"   },
+  { value: 11, label: "November"  }, { value: 12, label: "December"  },
+];
 
-  /* Responsive Table Scroll Logic */
+const YEARS     = Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - i);
+const PAGE_SIZE = 10;
+
+const TABLE_COLS = [
+  { key: "stateName",      label: "State Name" },
+  { key: "hqName",         label: "Headquarter Name" },
+  { key: "name",           label: "Name" },
+  { key: "employeeCode",   label: "Employee Code" },
+  { key: "division",       label: "Division" },
+  { key: "designation",    label: "Designation" },
+  { key: "submitted",      label: "Submitted" },
+  { key: "submissionDate", label: "Submission Date" },
+  { key: "approved",       label: "Approved" },
+  { key: "approvedDate",   label: "Approved Date" },
+  { key: "rejectionMsg",   label: "Rejection Message" },
+];
+
+/* ─── Premium UI Styles & Utilities ──────────────────────────────────────── */
+const STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght=500;600;700;800&family=Inter:wght=400;500;600;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  .dc-wrap {
+    font-family: 'Inter', sans-serif;
+    width: 100%;
+  }
+
+  .ucr-brand { font-family: 'Plus Jakarta Sans', sans-serif; }
+
+  /* ── Single Unified Card Container ── */
+  .dc-card {
+    background: #ffffff !important;
+    border: 1px solid #edf2f7;
+    border-radius: 16px;
+    isolation: isolate;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+    position: relative;
+    overflow: visible !important;
+    margin-bottom: 24px;
+  }
+
+  /* ── Card Header ── */
+  .dc-header {
+    padding: 24px 28px 16px;
+    background: #ffffff !important;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+    border-radius: 16px 16px 0 0 !important;
+    overflow: visible !important;
+  }
+
+  .dc-page-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #3B82F6, #2563eb);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 3px 8px rgba(59,130,246,0.2);
+    flex-shrink: 0;
+  }
+
+  /* ── Form Body ── */
+  .dc-body { 
+    padding: 20px 28px 24px; 
+    background: #ffffff !important; 
+    border-bottom-left-radius: 16px; 
+    border-bottom-right-radius: 16px;
+    overflow: visible !important;
+  }
+
+  /* ── Form Footer ── */
+  .dc-footer {
+    padding: 20px 28px 24px;
+    background: #ffffff !important;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    border-radius: 16px;
+    border-top: 1px solid #f1f5f9;
+  }
+
+  .dc-divider {
+    border: none;
+    border-top: 1px solid #f1f5f9;
+    margin: 24px 0 28px;
+  }
+
+  /* ── Responsive Input Grids ── */
+  .dc-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    margin-bottom: 25px;
+  }
+
+  @media(max-width: 1024px) {
+    .dc-grid { grid-template-columns: repeat(2, 1fr); gap: 18px; }
+  }
+  @media(max-width: 640px) {
+    .dc-grid { grid-template-columns: 1fr; gap: 20px; }
+    .dc-body { padding: 20px 16px; }
+    .dc-header { padding: 20px 16px 12px; }
+    .dc-footer { padding: 16px; }
+    .dc-submit-btn, .dc-delete-footer-btn { width: 100% !important; justify-content: center !important; }
+  }
+
+  /* ── Portal Dropdown Layer ── */
+  .dc-portal-dropdown {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12), 0 4px 12px rgba(15, 23, 42, 0.04);
+    z-index: 9999999 !important;
+    overflow: hidden;
+  }
+
+  .dc-portal-dropdown ul {
+    background: #ffffff !important;
+    max-height: 220px;
+    overflow-y: auto;
+    padding: 6px;
+    margin: 0;
+    list-style: none;
+    scrollbar-width: thin;
+    scrollbar-color: #e2e8f0 transparent;
+  }
+
+  .dc-opt {
+    padding: 10px 14px;
+    font-size: 13.5px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #475569;
+    background: #ffffff !important;
+    transition: all 0.12s;
+    font-weight: 500;
+  }
+  .dc-opt:hover   { background: rgba(59,130,246,0.06) !important; color: #2563eb; }
+  .dc-opt.selected { background: rgba(59,130,246,0.08) !important; color: #2563eb; font-weight: 600; }
+
+  /* ── Responsive Premium Table Container ── */
   .ucr-table-container {
-    border: 1px solid #f3f4f6;
+    border: 1px solid #edf2f7;
     border-radius: 12px;
     overflow-x: auto;
-    background: #fff;
+    background: #ffffff !important;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.01);
+    margin-bottom: 16px;
     -webkit-overflow-scrolling: touch;
   }
-  .ucr-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 800px; }
-  .ucr-table thead { background: #f9fafb; border-bottom: 1px solid #f3f4f6; }
-  .ucr-table th { padding: 12px 16px; text-align: left; font-weight: 700; color: #6b7280; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
-  .ucr-table td { padding: 12px 16px; color: #374151; border-bottom: 1px solid #f3f4f6; white-space: nowrap; }
-
-  .ucr-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:20px; margin-bottom:24px; }
-
-  @media(max-width:1024px){
-    .ucr-grid  { grid-template-columns:repeat(2,1fr); gap:16px; }
+  .ucr-table { width: 100%; border-collapse: collapse; font-size: 13.5px; text-align: left; min-width: 800px; }
+  .ucr-table thead tr { position: sticky; top: 0; z-index: 10; }
+  .ucr-table thead { background: #f8fafc; }
+  .ucr-table th { 
+    padding: 12px 14px; 
+    font-size: 11px; 
+    font-weight: 600; 
+    text-transform: uppercase; 
+    letter-spacing: 0.04em; 
+    color: #64748b;
+    border-bottom: 1px solid #edf2f7; 
+    white-space: nowrap;
   }
-  @media(max-width:600px){
-    .ucr-grid  { grid-template-columns:1fr; gap:12px; }
-    .ucr-body  { padding:14px; }
-    .ucr-header { padding: 12px 16px; }
-    .ucr-footer { justify-content: center; }
+  .ucr-table td { padding: 12px 14px; color: #475569; border-bottom: 1px solid #f8fafc; font-weight: 500; white-space: nowrap; }
+  .ucr-table tbody tr:last-child td { border-bottom: none; }
+  .ucr-table tbody tr:hover { background: #f8fafc; }
+
+  /* ── System Error Banner ── */
+  .dc-error-banner {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 12px;
+    padding: 12px 16px;
+    color: #dc2626;
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
   }
-  @keyframes ucr-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+
+  /* ── Action Buttons ── */
+  .dc-submit-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    background: #2563eb !important;
+    color: #fff !important;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+    transition: all 0.2s;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    letter-spacing: 0.01em;
+    height: 40px;
+  }
+  .dc-submit-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.45);
+    background: #1d4ed8 !important;
+  }
+  .dc-submit-btn:disabled { background: #93c5fd !important; color: #ffffff !important; cursor: not-allowed; box-shadow: none; opacity: 0.8 !important; }
+
+  .dc-delete-footer-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    border: 1px solid #fecaca;
+    background: #ffffff !important;
+    color: #dc2626;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    height: 40px;
+  }
+  .dc-delete-footer-btn:hover:not(:disabled) {
+    background: #fef2f2 !important;
+    border-color: #fca5a5;
+  }
+  .dc-delete-footer-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .dc-overlay {
+    position: fixed; inset: 0; z-index: 1000;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(15,23,42,0.3);
+    backdrop-filter: blur(4px);
+    padding: 16px;
+  }
+
+  .dc-popup {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.1);
+    padding: 36px 32px;
+    max-width: 360px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    animation: dc-zoom 0.22s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  .dc-field-wrap { display: flex; flex-direction: column; gap: 4px; position: relative; overflow: visible !important; }
+
+  @keyframes dc-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+  @keyframes dc-zoom { from{opacity:0;transform:scale(0.88)} to{opacity:1;transform:scale(1)} }
 `;
 
-// ─── Field height ─────────────────────────────────────────────────────────────
 const FH = 40;
 
-// ─── Page sizes ───────────────────────────────────────────────────────────────
 const PAGE_SIZES = [10, 20, 50];
 
-// ─── Request status options ───────────────────────────────────────────────────
 const STATUS_OPTIONS = [
   { value: "PENDING", label: "Pending By Manager" },
   { value: "APPROVED", label: "Approved By Manager" },
 ];
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────────────────────
 function toCamelCaseKey(key) {
   return key.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
 }
@@ -102,6 +339,7 @@ function getVal(row, keys, fallback = "—") {
   return fallback;
 }
 
+// Fixed Record ID matching mapping signature safely
 function getRecordId(row) {
   return (
     row?.stpId ??
@@ -109,6 +347,7 @@ function getRecordId(row) {
     row?.detailId ??
     row?.routeId ??
     row?.stp_detail_id ??
+    row?.stpDetailId ??
     null
   );
 }
@@ -124,9 +363,6 @@ function getRequestApprovedValue(row) {
   return getVal(row, ["requestStatus", "request_status"], "") === "APPROVED" ? "Yes" : "No";
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Main Component
-// ─────────────────────────────────────────────────────────────────────────────
 export default function STPApprove() {
   const [filterOpen, setFilterOpen] = useState(true);
 
@@ -156,14 +392,12 @@ export default function STPApprove() {
   // ── UI ────────────────────────────────────────────────────────────────────
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [successMsg, setSuccessMsg] = useState("");
+  const [popup, setPopup] = useState({ isOpen: false, message: "" });
 
-  // ── On mount: load geography summary ─────────────────────────────────────
   useEffect(() => {
     fetchGeographySummary();
   }, []);
 
-  // When employee + status both selected → auto-fetch STP details
   useEffect(() => {
     if (selectedEmp && requestStatus) {
       fetchSTPDetails(selectedEmp, requestStatus);
@@ -174,7 +408,6 @@ export default function STPApprove() {
     }
   }, [selectedEmp, requestStatus]);
 
-  // ── Level 1: GET /api/approvals/stp/geography-summary ────────────────────
   const fetchGeographySummary = async () => {
     setStateLoading(true);
     setError("");
@@ -188,7 +421,6 @@ export default function STPApprove() {
     }
   };
 
-  // ── Level 2: GET /api/approvals/stp/employee-summary?districtId=5 ────────
   const handleStateClick = async (row) => {
     setSelectedState(row);
     setSelectedEmp(null);
@@ -213,7 +445,6 @@ export default function STPApprove() {
     }
   };
 
-  // ── Level 3: Click employee → show status dropdown ────────────────────────
   const handleEmpClick = (emp) => {
     setSelectedEmp(emp);
     setRequestStatus("");
@@ -223,7 +454,6 @@ export default function STPApprove() {
     setStpPage(1);
   };
 
-  // ── Level 3: GET /api/approvals/stp/details?employeeId=12&requestStatus=PENDING ──
   const fetchSTPDetails = async (emp, status) => {
     setStpLoading(true);
     setCheckedIds([]);
@@ -243,52 +473,54 @@ export default function STPApprove() {
     }
   };
 
-  // ── Approve STP ───────────────────────────────────────────────────────────
   const handleApproveSTP = async () => {
     if (!checkedIds.length) return;
     setIsSubmitting(true);
+    setError("");
 
     try {
       const res = await api.post("/api/approvals/stp/approve", checkedIds);
-      if (res.status === 200) {
-        setSuccessMsg(`${checkedIds.length} approved!`);
-        setTimeout(() => setSuccessMsg(""), 3000);
+      if (res.status === 200 || res.data?.success) {
+        setPopup({ isOpen: true, message: `${checkedIds.length} STP records approved successfully!` });
+        setCheckedIds([]);
         await fetchSTPDetails(selectedEmp, requestStatus);
+      } else {
+        setError("Approval action didn't succeed. Please try again.");
       }
     } catch (err) {
-      setError("Approve failed.");
+      setError(err.response?.data?.message || "Approve failed.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // ── Delete STP ────────────────────────────────────────────────────────────
   const handleDeleteSTP = async () => {
     if (!checkedIds.length) return;
     setIsSubmitting(true);
+    setError("");
 
     try {
       const res = await api.delete("/api/approvals/stp/delete", { data: checkedIds });
-      if (res.status === 200) {
-        setSuccessMsg(`${checkedIds.length} deleted!`);
-        setTimeout(() => setSuccessMsg(""), 3000);
+      if (res.status === 200 || res.data?.success) {
+        setPopup({ isOpen: true, message: `${checkedIds.length} STP records deleted successfully!` });
+        setCheckedIds([]);
         await fetchSTPDetails(selectedEmp, requestStatus);
+      } else {
+        setError("Deletion action didn't succeed. Please try again.");
       }
     } catch (err) {
-      setError("Delete failed.");
+      setError(err.response?.data?.message || "Delete failed.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // ── Checkbox ──────────────────────────────────────────────────────────────
   const toggleCheck = (id) =>
     setCheckedIds((p) => (p.includes(id) ? p.filter((i) => i !== id) : [...p, id]));
 
   const toggleAll = (ids) =>
     setCheckedIds((p) => (p.length === ids.length ? [] : ids));
 
-  // ── Pagination helpers ────────────────────────────────────────────────────
   const paged = (data, page, size) => data.slice((page - 1) * size, page * size);
 
   const stateRows = paged(stateData, statePage, statePageSize);
@@ -297,50 +529,45 @@ export default function STPApprove() {
   const allStpIds = stpRows.map(getRecordId).filter((id) => id !== null);
 
   return (
-    <div className="ucr-wrap">
+    <div className="dc-wrap">
       <style>{STYLES}</style>
 
-      {/* Alerts */}
       {error && (
-        <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 12, padding: "10px 16px", color: "#dc2626", fontSize: 13, fontWeight: 600, marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
-          <AlertCircle size={16} /> {error}
-        </div>
-      )}
-      {successMsg && (
-        <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 12, padding: "10px 16px", color: "#16a34a", fontSize: 13, fontWeight: 600, marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
-          <CheckCircle2 size={16} /> {successMsg}
+        <div className="dc-error-banner">
+          <AlertCircle size={15} style={{ flexShrink: 0 }} />
+          {error}
         </div>
       )}
 
       {/* Level 1: State Summary Card */}
-      <div className="ucr-card">
-        <div className="ucr-header">
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: "#eff6ff", border: "1px solid #dbeafe", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <SlidersHorizontal size={17} style={{ color: "#2563eb" }} />
+      <div className="dc-card">
+        <div className="dc-header">
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div className="dc-page-icon">
+              <SlidersHorizontal size={16} color="#fff" />
+            </div>
+            <div>
+              <h1 className="ucr-brand" style={{ fontSize: 16, fontWeight: 700, color: "#1e293b", letterSpacing: "-0.01em", lineHeight: 1.2 }}>Employee STP Approval</h1>
+              <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>Manage employee tour plans</p>
+            </div>
           </div>
-          <div style={{ flex: 1 }}>
-            <h2 style={{ fontSize: 15, fontWeight: 700, color: "#111827", margin: 0 }}>Employee STP Approval</h2>
-            <p style={{ fontSize: 11, color: "#6b7280", margin: 0, marginTop: 2 }}>Manage employee tour plans</p>
-          </div>
-          <button onClick={() => setFilterOpen(!filterOpen)} style={{ background: "none", border: "none", cursor: "pointer" }}>
+          <button type="button" onClick={() => setFilterOpen(!filterOpen)} style={{ background: "none", border: "none", cursor: "pointer" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: "#6b7280" }}>FILTER</span>
-              <div
-                style={{ width: 34, height: 18, borderRadius: 20, background: filterOpen ? "#2563eb" : "#d1d5db", position: "relative", cursor: "pointer", transition: "0.2s" }}
-              >
-                <div style={{ width: 14, height: 14, borderRadius: "50%", background: "#fff", position: "absolute", top: 2, left: filterOpen ? 18 : 2, transition: "0.2s" }} />
+              <span className="ucr-brand" style={{ fontSize: 13, fontWeight: 600, color: "#475569" }}>Filter</span>
+              <div style={{ width: 40, height: 20, borderRadius: 100, position: "relative", cursor: "pointer", transition: "0.2s", background: filterOpen ? "#3B82F6" : "#cbd5e1" }}>
+                <div style={{ width: 14, height: 14, background: "#fff", borderRadius: "50%", position: "absolute", top: 3, left: filterOpen ? 23 : 3, transition: "0.2s" }} />
               </div>
             </div>
           </button>
         </div>
 
         {filterOpen && (
-          <div className="ucr-body">
+          <div className="dc-body">
             <div className="ucr-table-container">
               <table className="ucr-table">
                 <thead>
                   <tr>
-                    <th>S.No.</th>
+                    <th style={{ width: 60, textAlign: "center" }}>S.No.</th>
                     <th>State</th>
                     <th>Headquarter</th>
                     <th style={{ textAlign: "center" }}>Emp Count</th>
@@ -350,12 +577,12 @@ export default function STPApprove() {
                   {stateLoading ? (
                     <tr>
                       <td colSpan={4} style={{ textAlign: "center", padding: 40 }}>
-                        <Loader2 style={{ animation: "ucr-spin 1s linear infinite", margin: "0 auto" }} />
+                        <Loader2 size={20} style={{ animation: "dc-spin 1s linear infinite", color: "#3B82F6", margin: "0 auto" }} />
                       </td>
                     </tr>
                   ) : stateRows.length === 0 ? (
                     <tr>
-                      <td colSpan={4} style={{ textAlign: "center", padding: 40, color: "#9ca3af" }}>
+                      <td colSpan={4} style={{ textAlign: "center", padding: 40, color: "#94a3b8", fontStyle: "italic" }}>
                         No data found.
                       </td>
                     </tr>
@@ -363,19 +590,20 @@ export default function STPApprove() {
                     stateRows.map((row, i) => (
                       <tr
                         key={row.districtId ?? row.id ?? i}
-                        style={{ background: (selectedState?.districtId ?? selectedState?.id) === (row.districtId ?? row.id) ? "#eff6ff" : "transparent" }}
+                        style={{ background: (selectedState?.districtId ?? selectedState?.id) === (row.districtId ?? row.id) ? "rgba(59, 130, 246, 0.05)" : "transparent" }}
                       >
-                        <td>{(statePage - 1) * statePageSize + i + 1}</td>
+                        <td style={{ textAlign: "center", color: "#64748b" }}>{(statePage - 1) * statePageSize + i + 1}</td>
                         <td>
                           <button
+                            type="button"
                             onClick={() => handleStateClick(row)}
-                            style={{ background: "none", border: "none", color: "#2563eb", fontWeight: 700, cursor: "pointer" }}
+                            style={{ background: "none", border: "none", color: "#2563eb", fontWeight: 700, cursor: "pointer", fontFamily: "'Inter', sans-serif", fontSize: "13.5px" }}
                           >
                             {getVal(row, ["stateName", "state_name", "state"])}
                           </button>
                         </td>
                         <td>{getVal(row, ["headquarter", "headquarterName", "hqName", "districtName", "district_name"])}</td>
-                        <td style={{ textAlign: "center", fontWeight: 700 }}>
+                        <td style={{ textAlign: "center", fontWeight: 700, color: "#1e293b" }}>
                           {getVal(row, ["employeeCount", "employee_count", "empCount", "count", "totalPending", "total_pending"])}
                         </td>
                       </tr>
@@ -383,32 +611,32 @@ export default function STPApprove() {
                   )}
                 </tbody>
               </table>
-              <PaginationFooter
-                data={stateData}
-                page={statePage}
-                pageSize={statePageSize}
-                setPage={setStatePage}
-                setPageSize={setStatePageSize}
-              />
             </div>
+            <PaginationFooter
+              data={stateData}
+              page={statePage}
+              pageSize={statePageSize}
+              setPage={setStatePage}
+              setPageSize={setStatePageSize}
+            />
           </div>
         )}
       </div>
 
       {/* Level 2: Employee List Card */}
       {selectedState && (
-        <div className="ucr-card">
-          <div className="ucr-header" style={{ background: "#f9fafb" }}>
-            <h3 style={{ fontSize: 12, fontWeight: 700, color: "#4b5563" }}>
+        <div className="dc-card">
+          <div className="dc-header" style={{ background: "#f8fafc" }}>
+            <h1 className="ucr-brand" style={{ fontSize: 14, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.04em" }}>
               EMPLOYEES: {getVal(selectedState, ["stateName", "state_name", "state"]).toUpperCase()}
-            </h3>
+            </h1>
           </div>
-          <div className="ucr-body">
+          <div className="dc-body">
             <div className="ucr-table-container">
               <table className="ucr-table">
                 <thead>
                   <tr>
-                    <th>S.No.</th>
+                    <th style={{ width: 60, textAlign: "center" }}>S.No.</th>
                     <th>Name</th>
                     <th>Designation</th>
                     <th style={{ textAlign: "center" }}>Total Requests</th>
@@ -418,12 +646,12 @@ export default function STPApprove() {
                   {empLoading ? (
                     <tr>
                       <td colSpan={4} style={{ textAlign: "center", padding: 40 }}>
-                        <Loader2 style={{ animation: "ucr-spin 1s linear infinite" }} />
+                        <Loader2 size={20} style={{ animation: "dc-spin 1s linear infinite", color: "#3B82F6", margin: "0 auto" }} />
                       </td>
                     </tr>
                   ) : empRows.length === 0 ? (
                     <tr>
-                      <td colSpan={4} style={{ textAlign: "center", padding: 40, color: "#9ca3af" }}>
+                      <td colSpan={4} style={{ textAlign: "center", padding: 40, color: "#94a3b8", fontStyle: "italic" }}>
                         No employees found.
                       </td>
                     </tr>
@@ -434,19 +662,20 @@ export default function STPApprove() {
                       return (
                         <tr
                           key={empId ?? i}
-                          style={{ background: selId === empId ? "#eff6ff" : "transparent" }}
+                          style={{ background: selId === empId ? "rgba(59, 130, 246, 0.05)" : "transparent" }}
                         >
-                          <td>{(empPage - 1) * empPageSize + i + 1}</td>
+                          <td style={{ textAlign: "center", color: "#64748b" }}>{(empPage - 1) * empPageSize + i + 1}</td>
                           <td>
                             <button
+                              type="button"
                               onClick={() => handleEmpClick(row)}
-                              style={{ background: "none", border: "none", color: "#2563eb", fontWeight: 700, cursor: "pointer" }}
+                              style={{ background: "none", border: "none", color: "#2563eb", fontWeight: 700, cursor: "pointer", fontFamily: "'Inter', sans-serif", fontSize: "13.5px" }}
                             >
                               {getVal(row, ["employeeName", "name", "employee_name"])}
                             </button>
                           </td>
                           <td>{getVal(row, ["designationName", "designation", "designation_name"])}</td>
-                          <td style={{ textAlign: "center", fontWeight: 700 }}>
+                          <td style={{ textAlign: "center", fontWeight: 700, color: "#1e293b" }}>
                             {getVal(row, ["pendingRouteCount", "pending_route_count", "totalSTPRequests", "totalStpRequests", "total_stp_requests"])}
                           </td>
                         </tr>
@@ -455,32 +684,33 @@ export default function STPApprove() {
                   )}
                 </tbody>
               </table>
-              <PaginationFooter
-                data={empData}
-                page={empPage}
-                pageSize={empPageSize}
-                setPage={setEmpPage}
-                setPageSize={setEmpPageSize}
-              />
             </div>
+            <PaginationFooter
+              data={empData}
+              page={empPage}
+              pageSize={empPageSize}
+              setPage={setEmpPage}
+              setPageSize={setEmpPageSize}
+            />
           </div>
         </div>
       )}
 
       {/* Level 3: STP Details Card */}
       {selectedEmp && (
-        <div className="ucr-card">
-          <div className="ucr-header">
-            <h3 style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+        <div className="dc-card">
+          <div className="dc-header" style={{ background: "#f8fafc" }}>
+            <h1 className="ucr-brand" style={{ fontSize: 14, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.04em" }}>
               STP FOR: {getVal(selectedEmp, ["employeeName", "name", "employee_name"]).toUpperCase()}
-            </h3>
+            </h1>
           </div>
 
-          <div className="ucr-body">
+          <div className="dc-body">
             {/* Status dropdown */}
-            <div style={{ maxWidth: 280, marginBottom: 20 }}>
+            <div className="dc-grid">
               <FSelect
-                label="SELECT STATUS *"
+                label="Select Status"
+                name="requestStatus"
                 value={requestStatus}
                 onChange={(e) => setRequestStatus(e.target.value)}
                 options={STATUS_OPTIONS.map((o) => ({ id: o.value, label: o.label }))}
@@ -488,86 +718,91 @@ export default function STPApprove() {
             </div>
 
             {(stpVisible || stpLoading) && (
-              <div className="ucr-table-container">
-                <table className="ucr-table">
-                  <thead>
-                    <tr>
-                      <th style={{ width: 40, textAlign: "center" }}>
-                        <input
-                          type="checkbox"
-                          onChange={() => toggleAll(allStpIds)}
-                          checked={allStpIds.length > 0 && allStpIds.every((id) => checkedIds.includes(id))}
-                        />
-                      </th>
-                      <th>S.No.</th>
-                      <th>From Area</th>
-                      <th>To Area</th>
-                      <th>Activity</th>
-                      <th>Type</th>
-                      <th>Dist.</th>
-                      <th>Freq.</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {stpLoading ? (
+              <>
+                <div className="ucr-table-container">
+                  <table className="ucr-table">
+                    <thead>
                       <tr>
-                        <td colSpan={9} style={{ textAlign: "center", padding: 40 }}>
-                          <Loader2 style={{ animation: "ucr-spin 1s linear infinite" }} />
-                        </td>
+                        <th style={{ width: 44, textAlign: "center" }}>
+                          <input
+                            type="checkbox"
+                            onChange={() => toggleAll(allStpIds)}
+                            checked={allStpIds.length > 0 && allStpIds.every((id) => checkedIds.includes(id))}
+                            style={{ accentColor: "#3B82F6", width: 14, height: 14, cursor: "pointer" }}
+                          />
+                        </th>
+                        <th>S.No.</th>
+                        <th>From Area</th>
+                        <th>To Area</th>
+                        <th>Activity</th>
+                        <th>Type</th>
+                        <th>Dist.</th>
+                        <th>Freq.</th>
+                        <th>Status</th>
                       </tr>
-                    ) : stpRows.length === 0 ? (
-                      <tr>
-                        <td colSpan={9} style={{ textAlign: "center", padding: 40, color: "#9ca3af" }}>
-                          No STP records found.
-                        </td>
-                      </tr>
-                    ) : (
-                      stpRows.map((row, i) => {
-                        const rowId = getRecordId(row);
-                        const isChecked = rowId !== null && checkedIds.includes(rowId);
-                        const approvedByMgr = getRequestApprovedValue(row);
+                    </thead>
+                    <tbody>
+                      {stpLoading ? (
+                        <tr>
+                          <td colSpan={9} style={{ textAlign: "center", padding: 40 }}>
+                            <Loader2 size={20} style={{ animation: "dc-spin 1s linear infinite", color: "#3B82F6", margin: "0 auto" }} />
+                          </td>
+                        </tr>
+                      ) : stpRows.length === 0 ? (
+                        <tr>
+                          <td colSpan={9} style={{ textAlign: "center", padding: 40, color: "#94a3b8", fontStyle: "italic" }}>
+                            No STP records found.
+                          </td>
+                        </tr>
+                      ) : (
+                        stpRows.map((row, i) => {
+                          const rowId = getRecordId(row);
+                          const isChecked = rowId !== null && checkedIds.includes(rowId);
+                          const approvedByMgr = getRequestApprovedValue(row);
 
-                        return (
-                          <tr
-                            key={rowId ?? i}
-                            onClick={() => rowId !== null && toggleCheck(rowId)}
-                            style={{ cursor: "pointer", background: isChecked ? "#eff6ff" : "transparent" }}
-                          >
-                            <td style={{ textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                onChange={() => rowId !== null && toggleCheck(rowId)}
-                              />
-                            </td>
-                            <td>{(stpPage - 1) * stpPageSize + i + 1}</td>
-                            <td style={{ fontWeight: 600 }}>{getVal(row, ["fromArea", "from_area", "fromAreaName", "from_area_name"])}</td>
-                            <td style={{ fontWeight: 600 }}>{getVal(row, ["toArea", "to_area", "toAreaName", "to_area_name"])}</td>
-                            <td>{getVal(row, ["frc", "activity", "activityName", "activity_type"])}</td>
-                            <td>{getVal(row, ["areaType", "area_type", "type"])}</td>
-                            <td>{getVal(row, ["distance", "distanceKm", "distance_km"])} km</td>
-                            <td>{getVal(row, ["frequencyVisit", "frequency_visit", "freqVisit", "freq_visit"])}</td>
-                            <td>
-                              <span
-                                style={{
-                                  fontSize: 10,
-                                  fontWeight: 700,
-                                  padding: "2px 8px",
-                                  borderRadius: 10,
-                                  background: approvedByMgr === "Yes" ? "#dcfce7" : "#f3f4f6",
-                                  color: approvedByMgr === "Yes" ? "#16a34a" : "#6b7280",
-                                }}
-                              >
-                                {approvedByMgr}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
+                          return (
+                            <tr
+                              key={rowId ?? i}
+                              onClick={() => rowId !== null && toggleCheck(rowId)}
+                              style={{ cursor: "pointer", background: isChecked ? "rgba(59, 130, 246, 0.05)" : "transparent" }}
+                            >
+                              <td style={{ textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={() => rowId !== null && toggleCheck(rowId)}
+                                    style={{ accentColor: "#3B82F6", width: 14, height: 14, cursor: "pointer" }}
+                                  />
+                              </td>
+                              <td style={{ color: "#64748b" }}>{(stpPage - 1) * stpPageSize + i + 1}</td>
+                              <td style={{ fontWeight: 600, color: "#1e293b" }}>{getVal(row, ["fromArea", "from_area", "fromAreaName", "from_area_name"])}</td>
+                              <td style={{ fontWeight: 600, color: "#1e293b" }}>{getVal(row, ["toArea", "to_area", "toAreaName", "to_area_name"])}</td>
+                              <td>{getVal(row, ["frc", "activity", "activityName", "activity_type"])}</td>
+                              <td>{getVal(row, ["areaType", "area_type", "type"])}</td>
+                              <td>{getVal(row, ["distance", "distanceKm", "distance_km"])} km</td>
+                              <td>{getVal(row, ["frequencyVisit", "frequency_visit", "freqVisit", "freq_visit"])}</td>
+                              <td>
+                                <span
+                                  style={{
+                                    fontSize: 11,
+                                    fontWeight: 700,
+                                    padding: "3px 10px",
+                                    borderRadius: 20,
+                                    background: approvedByMgr === "Yes" ? "#f0fdf4" : "#f8fafc",
+                                    color: approvedByMgr === "Yes" ? "#16a34a" : "#64748b",
+                                    border: `1px solid ${approvedByMgr === "Yes" ? "#bbf7d0" : "#e2e8f0"}`
+                                  }}
+                                >
+                                  {approvedByMgr}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
                 <PaginationFooter
                   data={stpData}
                   page={stpPage}
@@ -575,60 +810,77 @@ export default function STPApprove() {
                   setPage={setStpPage}
                   setPageSize={setStpPageSize}
                 />
-              </div>
+              </>
             )}
           </div>
 
           {/* Action buttons */}
           {stpVisible && (
-            <div className="ucr-footer">
-              <button
-  onClick={handleDeleteSTP}
-  disabled={!checkedIds.length || isSubmitting}
-  style={{
-    padding: "8px 20px",
-    borderRadius: 8,
-    fontSize: 13,
-    fontWeight: 700,
-    border: "1px solid #fecaca",
-    background: "#fff",
-    color: "#dc2626",
-    cursor: "pointer",
-    opacity: !checkedIds.length || isSubmitting ? 0.6 : 1,
-    display: "flex",        // ← add this
-    alignItems: "center",   // ← add this
-    gap: 6,                 // ← add this
-    minWidth: 90,           // ← add this
-  }}
->
-  <Trash2 size={14} />
-  Delete
-</button>
-              <button
-                onClick={handleApproveSTP}
-                disabled={!checkedIds.length || isSubmitting}
-                style={{ padding: "8px 24px", borderRadius: 8, fontSize: 13, fontWeight: 700, border: "none", background: "#2563eb", color: "#fff", cursor: "pointer", opacity: !checkedIds.length || isSubmitting ? 0.6 : 1 }}
-              >
-                {isSubmitting ? "Processing..." : "Approve STP"}
-              </button>
+            <div className="dc-footer" style={{ gap: 12 }}>
               {checkedIds.length > 0 && (
-                <span style={{ fontSize: 11, fontWeight: 700, background: "#eff6ff", color: "#2563eb", padding: "4px 10px", borderRadius: 20, border: "1px solid #dbeafe" }}>
+                <span style={{ fontSize: 12, fontWeight: 700, background: "#eff6ff", color: "#2563eb", padding: "4px 12px", borderRadius: 20, border: "1px solid #dbeafe", marginRight: "auto", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                   {checkedIds.length} selected
                 </span>
               )}
+              <button
+                type="button"
+                onClick={handleDeleteSTP}
+                disabled={!checkedIds.length || isSubmitting}
+                className="dc-delete-footer-btn"
+              >
+                {isSubmitting ? <Loader2 size={14} style={{ animation: "dc-spin 1s linear infinite" }} /> : <Trash2 size={14} />}
+                Delete Selected
+              </button>
+              <button
+                type="button"
+                onClick={handleApproveSTP}
+                disabled={!checkedIds.length || isSubmitting}
+                className="dc-submit-btn"
+              >
+                {isSubmitting ? <Loader2 size={14} style={{ animation: "dc-spin 1s linear infinite" }} /> : <Check size={14} />}
+                Approve STP
+              </button>
             </div>
           )}
         </div>
       )}
+
+      {/* ── Success Popup ── */}
+      {popup.isOpen && (
+        <div className="dc-overlay">
+          <div className="dc-popup">
+            <div style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(59,130,246,0.06)", border: "1px solid rgba(59,130,246,0.25)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
+              <Check size={28} style={{ color: "#3B82F6", strokeWidth: 2.5 }} />
+            </div>
+            <h3 className="ucr-brand" style={{ fontSize: 17, fontWeight: 700, color: "#1e293b", textAlign: "center", margin: "0 0 8px", letterSpacing: "-0.01em" }}>Success</h3>
+            <p style={{ fontSize: 13, color: "#94a3b8", textAlign: "center", margin: "0 0 24px" }}>{popup.message}</p>
+            <button
+              type="button"
+              onClick={() => setPopup({ isOpen: false, message: "" })}
+              style={{
+                background: "linear-gradient(135deg, #3B82F6, #2563eb)", color: "#fff", border: "none", borderRadius: 8,
+                padding: "10px 0", width: "100%", fontSize: 13.5, fontWeight: 600, cursor: "pointer",
+                fontFamily: "'Plus Jakarta Sans', sans-serif", boxShadow: "0 4px 14px rgba(59,130,246,0.2)", transition: "all 0.15s"
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 6px 20px rgba(59,130,246,0.3)"; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 14px rgba(59,130,246,0.2)"; }}
+            >
+              Continue
+            </button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// FSelect — floating label dropdown
+// FSelect — Searchable Portal Dropdown Component (Fixed Signature Event Parameters)
 // ═══════════════════════════════════════════════════════════════════
-function FSelect({ label, value, onChange, disabled, options = [] }) {
+function FSelect({ label, name, value, onChange, disabled, options = [] }) {
   const [open, setOpen] = useState(false);
+  const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
   const ref = useRef(null);
 
   useEffect(() => {
@@ -639,39 +891,84 @@ function FSelect({ label, value, onChange, disabled, options = [] }) {
     return () => document.removeEventListener("mousedown", h);
   }, []);
 
+  const handleTriggerClick = () => {
+    if (disabled) return;
+    if (!open && ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      setCoords({
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX,
+        width: rect.width,
+      });
+    }
+    setOpen(!open);
+  };
+
   const selected = options.find((o) => String(o.id) === String(value));
-  const active = open || Boolean(value);
+  const hasVal = Boolean(value);
+  const active = open || hasVal;
+  const borderColor = open ? "#3B82F6" : hasVal ? "#bfdbfe" : "#e2e8f0";
+  const bgColor = disabled ? "#f8fafc" : open ? "#eff6ff" : "#ffffff";
+  const shadow  = open && !disabled ? "0 0 0 3px rgba(59,130,246,0.15)" : "none";
+  const labelColor = open ? "#3B82F6" : hasVal ? "#64748b" : "#94a3b8";
 
   return (
-    <div ref={ref} style={{ position: "relative", width: "100%" }}>
+    <div ref={ref} style={{ position: "relative", width: "100%", userSelect: "none", zIndex: open ? 100 : 1 }} className="dc-field-wrap">
       <div
-        onClick={() => !disabled && setOpen(!open)}
-        style={{ width: "100%", height: FH, borderRadius: 8, padding: "0 12px", fontSize: 13, display: "flex", alignItems: "center", border: `1.5px solid ${active ? "#2563eb" : "#d1d5db"}`, cursor: "pointer", background: "#fff" }}
+        onClick={handleTriggerClick}
+        style={{
+          width: "100%", height: FH, borderRadius: 8, padding: "0 36px 0 12px",
+          fontSize: 13, display: "flex", alignItems: "center",
+          cursor: disabled ? "not-allowed" : "pointer", background: bgColor + " !important",
+          border: `1.5px solid ${disabled ? "#f1f5f9" : borderColor}`,
+          boxShadow: disabled ? "none" : shadow, transition: "all 0.18s", boxSizing: "border-box",
+        }}
       >
-        <span style={{ flex: 1, fontWeight: 600, color: value ? "#111827" : "transparent" }}>
+        <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 500, color: hasVal ? (disabled ? "#94a3b8" : "#1e293b") : "transparent", fontSize: 14 }}>
           {selected?.label || " "}
         </span>
-        <ChevronDown size={14} style={{ color: "#9ca3af" }} />
+        <div style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: open ? "#3B82F6" : "#94a3b8", transition: "all 0.2s" }}>
+          <ChevronDown size={15} style={{ transform: open ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.2s" }} />
+        </div>
       </div>
       <label
-        style={{ position: "absolute", left: 10, top: active ? -9 : 12, fontSize: active ? 10 : 12, fontWeight: 600, color: active ? "#2563eb" : "#9ca3af", background: "#fff", padding: "0 4px", transition: "0.2s" }}
+        style={{
+          position: "absolute", left: 10, pointerEvents: "none", zIndex: 20,
+          transition: "all 0.12s ease-out", fontWeight: 500, top: active ? "0" : "50%",
+          transform: active ? "translateY(-50%)" : "translateY(-50%)", fontSize: active ? 11 : 13,
+          color: disabled ? "#cbd5e1" : labelColor, background: active ? "#ffffff" : "transparent",
+          padding: active ? "0 5px" : "0", letterSpacing: active ? "0.02em" : "0",
+        }}
       >
         {label}
       </label>
-      {open && (
-        <div
-          style={{ position: "absolute", top: "110%", left: 0, width: "100%", background: "#fff", border: "1px solid #e5e7eb", borderRadius: 8, boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)", zIndex: 100 }}
-        >
-          {options.map((opt) => (
-            <div
-              key={opt.id}
-              onClick={() => { onChange({ target: { value: opt.id } }); setOpen(false); }}
-              style={{ padding: "10px 12px", fontSize: 13, cursor: "pointer", background: value === opt.id ? "#eff6ff" : "transparent", color: value === opt.id ? "#2563eb" : "#374151" }}
-            >
-              {opt.label}
-            </div>
-          ))}
-        </div>
+      {open && !disabled && createPortal(
+        <div className="dc-portal-dropdown" style={{ position: "absolute", top: coords.top + 4, left: coords.left, width: coords.width }}>
+          <ul style={{ maxHeight: 200, overflowY: "auto", margin: 0, padding: "4px 0", listStyle: "none", background: "#ffffff" }}>
+            {options.length === 0 && <li style={{ padding: "12px", fontSize: 12, color: "#94a3b8", fontStyle: "italic" }}>No options available</li>}
+            {options.map((opt) => (
+              <li
+                key={opt.id}
+                className={`dc-opt${String(value) === String(opt.id) ? " selected" : ""}`}
+                style={{
+                  padding: "10px 14px", fontSize: "13.5px", borderRadius: "8px", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px",
+                  color: String(value) === String(opt.id) ? "#2563eb" : "#475569",
+                  backgroundColor: String(value) === String(opt.id) ? "rgba(59,130,246,0.08)" : "#ffffff",
+                  fontWeight: String(value) === String(opt.id) ? "600" : "500"
+                }}
+                onMouseDown={(e) => { 
+                  e.preventDefault(); 
+                  onChange({ target: { name, value: String(opt.id) } }); 
+                  setOpen(false); 
+                }}
+              >
+                {String(value) === String(opt.id) && <Check size={12} style={{ color: "#3B82F6", flexShrink: 0 }} />}
+                {opt.label}
+              </li>
+            ))}
+          </ul>
+        </div>,
+        document.body
       )}
     </div>
   );
@@ -684,20 +981,20 @@ function PaginationFooter({ data, page, pageSize, setPage, setPageSize }) {
   const to = Math.min(page * pageSize, data.length);
 
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 12, padding: "12px 16px", borderTop: "1px solid #f3f4f6", background: "#f9fafb", fontSize: 11, flexWrap: "wrap" }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 12, padding: "12px 16px", borderTop: "1px solid #edf2f7", background: "#f8fafc", fontSize: 12, flexWrap: "wrap" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <span style={{ color: "#6b7280" }}>Items per page:</span>
+        <span style={{ color: "#64748b" }}>Items per page:</span>
         <select
           value={pageSize}
           onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
-          style={{ border: "1px solid #d1d5db", borderRadius: 4 }}
+          style={{ border: "1px solid #e2e8f0", borderRadius: 6, padding: "2px 8px", outline: "none", cursor: "pointer", color: "#475569", background: "#ffffff", fontFamily: "'Inter', sans-serif" }}
         >
           {PAGE_SIZES.map((s) => (
             <option key={s} value={s}>{s}</option>
           ))}
         </select>
       </div>
-      <span style={{ color: "#6b7280" }}>
+      <span style={{ color: "#64748b", fontWeight: 600, fontFamily: "'Inter', sans-serif" }}>
         {from} – {to} of {data.length}
       </span>
       <div style={{ display: "flex", gap: 4 }}>
@@ -711,12 +1008,16 @@ function PaginationFooter({ data, page, pageSize, setPage, setPageSize }) {
 }
 
 // ─── NavBtn ───────────────────────────────────────────────────────────────────
+// Opaque white parameters explicitly defined to clear transparency bugs on mobile layers
 function NavBtn({ icon, onClick, disabled }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       disabled={disabled}
-      style={{ background: "#fff", border: "1px solid #d1d5db", borderRadius: 4, width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center", cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.4 : 1 }}
+      style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 6, width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", cursor: disabled ? "not-allowed" : "pointer", color: "#475569", opacity: disabled ? 0.4 : 1, transition: "all 0.15s" }}
+      onMouseEnter={e => { if (!disabled) e.currentTarget.style.background = "#f8fafc"; }}
+      onMouseLeave={e => { if (!disabled) e.currentTarget.style.background = "#ffffff"; }}
     >
       {icon}
     </button>

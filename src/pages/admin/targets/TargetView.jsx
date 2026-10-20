@@ -1,66 +1,259 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
-  Loader2, AlertCircle, ChevronDown, Check,
-  BarChart3, FileSpreadsheet, Eye
+  Loader2, AlertCircle, CheckCircle2, ChevronDown, Check,
+  BarChart3, FileSpreadsheet, Eye, ChevronLeft, ChevronRight
 } from "lucide-react";
 import api from "../../../services/api";
 
-// ─── Global responsive styles (from reference) ───────────────────────────────
-const STYLES = `
-  *, *::before, *::after { box-sizing: border-box; }
-  .ucr-wrap  { width:100%; padding-bottom:48px; font-family:Inter,sans-serif; overflow-x: hidden; }
-  .ucr-card  { background:#fff; border-radius:16px; box-shadow:0 1px 4px rgba(0,0,0,0.07); border:1px solid #f3f4f6; overflow:visible; margin-bottom: 24px; min-width: 0; }
-  .ucr-header{ padding:16px 20px; border-bottom:1px solid #f3f4f6; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; }
-  .ucr-body  { padding:24px; }
-  .ucr-footer{ padding:14px 24px; background:#f9fafb; border-top:1px solid #f3f4f6; display:flex; align-items:center; justify-content:flex-end; border-radius:0 0 16px 16px; flex-wrap: wrap; gap: 12px; }
-
-  .ucr-table-container {
-    border: 1px solid #f3f4f6;
-    border-radius: 12px;
-    overflow-x: auto;
-    background: #fff;
-    -webkit-overflow-scrolling: touch;
-    width: 100%;
-  }
-  .ucr-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 1200px; }
-  .ucr-table thead { background: #f9fafb; border-bottom: 1px solid #f3f4f6; }
-  .ucr-table th { padding: 12px 16px; text-align: center; font-weight: 700; color: #6b7280; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
-  .ucr-table td { padding: 12px 16px; color: #374151; border-bottom: 1px solid #f3f4f6; white-space: nowrap; text-align: center; }
-
-  .ucr-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:20px; margin-bottom:24px; }
-  .ucr-grid-2 { display:grid; grid-template-columns:repeat(2,1fr); gap:20px; margin-bottom:24px; }
-  .ucr-grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:20px; align-items: center; }
-
-  @media(max-width:1024px){
-    .ucr-grid, .ucr-grid-4, .ucr-grid-2 { grid-template-columns:repeat(2,1fr); gap:16px; }
-    .hide-on-mobile { display: none; }
-  }
-  @media(max-width:768px){
-    .ucr-grid, .ucr-grid-4, .ucr-grid-2 { grid-template-columns:1fr; gap:16px; }
-    .ucr-body  { padding:16px; }
-    .ucr-header { padding: 16px; } /* Keeping inline for mobile */
-    .ucr-footer { justify-content: center; flex-direction: column; }
-    .ucr-footer > button { width: 100%; justify-content: center; }
-  }
-  @keyframes ucr-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
-`;
-
-const INPUT_CLASS = "h-[38px]";
+// ─── Constants & Matrix Variables ───────────────────────────────────────────
 const FH = 40;
-
+const PAGE_SIZES = [5, 10, 20, 50];
 const CURRENT_YEAR = new Date().getFullYear();
+
 const YEARS = Array.from({ length: 5 }, (_, i) => ({
   value: String(CURRENT_YEAR - 1 + i),
   label: String(CURRENT_YEAR - 1 + i)
 }));
 
-// Mapped precisely to the backend's numeric string keys ("1", "2", etc.)
 const MONTH_COLUMNS = [
   { key: "1", label: "Jan" }, { key: "2", label: "Feb" }, { key: "3", label: "March" },
   { key: "4", label: "April" }, { key: "5", label: "May" }, { key: "6", label: "June" },
   { key: "7", label: "July" }, { key: "8", label: "Aug" }, { key: "9", label: "Sep" },
   { key: "10", label: "Oct" }, { key: "11", label: "Nov" }, { key: "12", label: "Dec" }
 ];
+
+/* ─── Premium UI Styles & Utilities ──────────────────────────────────────── */
+const STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght=500;600;700;800&family=Inter:wght=400;500;600;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  .dc-wrap {
+    font-family: 'Inter', sans-serif;
+    width: 100%;
+  }
+
+  .ucr-brand { font-family: 'Plus Jakarta Sans', sans-serif; }
+
+  /* ── Single Unified Card Container ── */
+  .dc-card {
+    background: #ffffff !important;
+    border: 1px solid #edf2f7;
+    border-radius: 16px;
+    isolation: isolate;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+    position: relative;
+    overflow: visible !important;
+    margin-bottom: 24px;
+    min-width: 0;
+  }
+
+  /* ── Card Header ── */
+  .dc-header {
+    padding: 24px 28px 16px;
+    background: #ffffff !important;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+    border-radius: 16px 16px 0 0 !important;
+    overflow: visible !important;
+  }
+
+  .dc-page-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #3B82F6, #2563eb);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 3px 8px rgba(59,130,246,0.2);
+    flex-shrink: 0;
+  }
+
+  /* ── Form Body ── */
+  .dc-body { 
+    padding: 20px 28px 24px; 
+    background: #ffffff !important; 
+    border-bottom-left-radius: 16px; 
+    border-bottom-right-radius: 16px;
+    overflow: visible !important;
+  }
+
+  /* ── Form Footer ── */
+  .dc-footer {
+    padding: 20px 28px 24px;
+    background: #ffffff !important;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    border-radius: 16px;
+    border-top: 1px solid #f1f5f9;
+  }
+
+  /* ── Original Balanced Radio Input Grid Row Layout ── */
+  .ucr-grid-4 { 
+    display: grid; 
+    grid-template-columns: 160px repeat(3, 1fr); 
+    gap: 18px 16px; 
+    align-items: center; 
+    margin-bottom: 20px;
+  }
+  .ucr-grid-4:last-of-type {
+    margin-bottom: 0;
+  }
+
+  .col-span-2 { grid-column: span 2; }
+  .col-span-4 { grid-column: span 4; }
+
+  @media(max-width: 1200px) {
+    .ucr-grid-4 { grid-template-columns: 140px repeat(3, 1fr); }
+  }
+  @media(max-width: 1024px) {
+    .ucr-grid-4 { grid-template-columns: 1fr; gap: 14px; }
+    .hide-on-mobile { display: none; }
+  }
+  @media(max-width: 768px) {
+    .dc-body { padding: 20px 16px; }
+    .dc-header { padding: 20px 16px 12px; }
+    .dc-footer { padding: 16px; justify-content: center; }
+    .dc-footer > button { width: 100% !important; justify-content: center !important; }
+  }
+
+  /* ── Portal Dropdown Layer ── */
+  .dc-portal-dropdown {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12), 0 4px 12px rgba(15, 23, 42, 0.04);
+    z-index: 9999999 !important;
+    overflow: hidden;
+  }
+
+  .dc-portal-dropdown ul {
+    background: #ffffff !important;
+    max-height: 220px;
+    overflow-y: auto;
+    padding: 6px;
+    margin: 0;
+    list-style: none;
+    scrollbar-width: thin;
+    scrollbar-color: #e2e8f0 transparent;
+  }
+
+  .dc-opt {
+    padding: 10px 14px;
+    font-size: 13.5px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #475569;
+    background: #ffffff !important;
+    transition: all 0.12s;
+    font-weight: 500;
+  }
+  .dc-opt:hover   { background: rgba(59,130,246,0.06) !important; color: #2563eb; }
+  .dc-opt.selected { background: rgba(59,130,246,0.08) !important; color: #2563eb; font-weight: 600; }
+
+  /* ── Premium Compact Table Container ── */
+  .ucr-table-container {
+    border: 1px solid #edf2f7;
+    border-radius: 12px;
+    overflow-x: auto;
+    background: #ffffff !important;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.01);
+    margin-bottom: 16px;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+  }
+
+  .ucr-table-container::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+  }
+  .ucr-table-container::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 100px;
+  }
+  .ucr-table-container::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 100px;
+    border: 2px solid #f1f5f9;
+  }
+  .ucr-table-container::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+
+  .ucr-table { width: 100%; border-collapse: collapse; font-size: 13.5px; text-align: left; min-width: 1000px; }
+  .ucr-table thead tr { position: sticky; top: 0; z-index: 10; }
+  .ucr-table thead { background: #f8fafc; }
+  
+  .ucr-table th { 
+    padding: 12px 16px; 
+    font-size: 11px; 
+    font-weight: 600; 
+    text-transform: uppercase; 
+    letter-spacing: 0.05em; 
+    color: #64748b;
+    border-bottom: 1px solid #edf2f7; 
+    white-space: nowrap;
+    text-align: center;
+  }
+  .ucr-table td { 
+    padding: 11px 16px; 
+    color: #475569; 
+    border-bottom: 1px solid #f8fafc; 
+    font-weight: 500; 
+    white-space: nowrap; 
+    text-align: center;
+  }
+  .ucr-table tbody tr:last-child td { border-bottom: none; }
+  .ucr-table tbody tr:hover { background: #f8fafc; }
+
+  /* ── System Error Banner ── */
+  .dc-error-banner {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 12px;
+    padding: 12px 16px;
+    color: #dc2626;
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .dc-submit-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    background: #2563eb !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+    transition: all 0.2s;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    letter-spacing: 0.01em;
+    height: 40px;
+  }
+  .dc-submit-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.45);
+    background: #1d4ed8 !important;
+  }
+`;
 
 export default function TargetView() {
   // ─── UI State ────────────────────────────────────────────────────────────────
@@ -69,7 +262,7 @@ export default function TargetView() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // ─── Filter State (Multi-Selects for State, District, Employee) ──────────────
+  // ─── Filter State ────────────────────────────────────────────────────────────
   const [filters, setFilters] = useState({
     stateIds: [],
     districtIds: [],
@@ -77,7 +270,7 @@ export default function TargetView() {
     year: String(CURRENT_YEAR)
   });
 
-  // ─── Master Data (Dropdowns) ─────────────────────────────────────────────────
+  // ─── Master Data ─────────────────────────────────────────────────────────────
   const [states, setStates] = useState([]);
   const [districts, setDistricts] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -92,8 +285,6 @@ export default function TargetView() {
     headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` }
   }), []);
 
-  // ─── Data Fetching (Cascading Multi-Select Dropdowns) ────────────────────────
-  
   // 1. Fetch States on Mount
   useEffect(() => {
     const fetchStates = async () => {
@@ -101,8 +292,8 @@ export default function TargetView() {
         const res = await api.get("/api/masters/states", getAuthHeaders());
         const stateData = res.data?.data || res.data || [];
         const normalizedStates = Array.isArray(stateData) ? stateData.map((s) => ({
-          id: String(s.id ?? s.stateId),
-          stateName: s.state_name || s.stateName || s.name || "Unknown"
+          id: String(s?.id ?? s?.stateId ?? ""),
+          stateName: s?.state_name || s?.stateName || s?.name || "Unknown"
         })) : [];
         setStates(normalizedStates.filter(opt => opt.id !== ""));
       } catch (err) { console.error("Failed to load states", err); }
@@ -116,7 +307,7 @@ export default function TargetView() {
     setDistricts([]); setEmployees([]);
     setTableVisible(false);
     
-    if (filters.stateIds.length > 0) {
+    if (filters.stateIds && filters.stateIds.length > 0) {
       const fetchDistricts = async () => {
         try {
           const query = filters.stateIds.map(id => `stateIds=${id}`).join('&');
@@ -124,8 +315,8 @@ export default function TargetView() {
           
           const districtData = res.data?.data || res.data || [];
           const normalizedDistricts = Array.isArray(districtData) ? districtData.map((d) => ({
-            id: String(d.id ?? d.districtId),
-            districtName: d.district_name || d.districtName || d.name || "Unknown"
+            id: String(d?.id ?? d?.districtId ?? ""),
+            districtName: d?.district_name || d?.districtName || d?.name || "Unknown"
           })) : [];
           setDistricts(normalizedDistricts.filter(opt => opt.id !== ""));
         } catch (err) { console.error("Failed to load districts", err); }
@@ -140,7 +331,7 @@ export default function TargetView() {
     setEmployees([]);
     setTableVisible(false);
 
-    if (filters.districtIds.length > 0 && filters.stateIds.length > 0) {
+    if (filters.districtIds?.length > 0 && filters.stateIds?.length > 0) {
       const fetchEmployees = async () => {
         try {
           const stateQuery = filters.stateIds.map(id => `stateIds=${id}`).join('&');
@@ -150,10 +341,10 @@ export default function TargetView() {
           const employeeData = res.data?.data || res.data || [];
           
           const normalizedEmployees = Array.isArray(employeeData) ? employeeData.map((e) => {
-            const name = e.name || e.employee_name || e.employeeName || "Unknown";
-            const type = e.type || e.designation_name || e.designationName || e.designation || "";
+            const name = e?.name || e?.employee_name || e?.employeeName || "Unknown";
+            const type = e?.type || e?.designation_name || e?.designationName || e?.designation || "";
             return {
-              id: String(e.id ?? e.employeeId),
+              id: String(e?.id ?? e?.employeeId ?? ""),
               employeeName: type ? `${name}-(${type})` : name
             };
           }) : [];
@@ -165,7 +356,6 @@ export default function TargetView() {
   }, [filters.districtIds, filters.stateIds, getAuthHeaders]);
 
   // ─── Handlers ────────────────────────────────────────────────────────────────
-
   const handleFilterChange = (field, value) => {
     setFilters(prev => ({ ...prev, [field]: value }));
     setTableVisible(false); 
@@ -173,8 +363,7 @@ export default function TargetView() {
 
   const handleViewTarget = async () => {
     setError("");
-    
-    if (filters.stateIds.length === 0 || filters.districtIds.length === 0 || filters.employeeIds.length === 0 || !filters.year) {
+    if (!filters.stateIds?.length || !filters.districtIds?.length || !filters.employeeIds?.length || !filters.year) {
       return setError("Please select State, District, Employee, and Year to view targets.");
     }
 
@@ -188,13 +377,11 @@ export default function TargetView() {
       };
 
       const res = await api.post(`/api/target/submission/report`, payload, getAuthHeaders());
+      const reportResponse = res.data?.data || res.data || {};
       
-      const reportResponse = res.data?.data || {};
-      
-      setReportData(reportResponse.rows || []);
+      setReportData(Array.isArray(reportResponse.rows) ? reportResponse.rows : []);
       setMonthTotals(reportResponse.monthTotals || {});
       setGrandTotal(reportResponse.grandTotal || 0);
-      
       setTableVisible(true);
     } catch (err) {
       setError(err.response?.data?.message || "Failed to fetch target report data.");
@@ -208,12 +395,11 @@ export default function TargetView() {
   };
 
   const handleExportExcel = () => {
-    if (!reportData.length) return;
+    if (!reportData || !reportData.length) return;
     
     const headers = ["User Name", ...MONTH_COLUMNS.map(m => m.label), "TOTAL"];
-    
     const rows = reportData.map(row => [
-      row.employeeName,
+      row.employeeName || "-",
       ...MONTH_COLUMNS.map(month => row.monthlyTargets?.[month.key] || 0),
       row.total || 0
     ]);
@@ -240,110 +426,100 @@ export default function TargetView() {
     window.URL.revokeObjectURL(url);
   };
 
-  // ─── Dropdown Options Mapping ────────────────────────────────────────────────
-  const stateOpts = states.map(s => ({ id: String(s.id), value: String(s.id), label: s.stateName }));
-  const distOpts = districts.map(d => ({ id: String(d.id), value: String(d.id), label: d.districtName }));
-  const empOpts = employees.map(e => ({ id: String(e.id), value: String(e.id), label: e.employeeName }));
+  const stateOpts = states.map(s => ({ value: String(s.id), label: s.stateName }));
+  const distOpts = districts.map(d => ({ value: String(d.id), label: d.districtName }));
+  const empOpts = employees.map(e => ({ value: String(e.id), label: e.employeeName }));
 
-  // ─── Render ──────────────────────────────────────────────────────────────────
   return (
-    <div className="ucr-wrap">
+    <div className="dc-wrap">
       <style>{STYLES}</style>
-      
-      {/* Global Alerts */}
+
       {error && (
-        <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 12, padding: "10px 16px", color: "#dc2626", fontSize: 13, fontWeight: 600, marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
-          <AlertCircle size={16} /> {error}
+        <div className="dc-error-banner">
+          <AlertCircle size={15} style={{ flexShrink: 0 }} />
+          {error}
         </div>
       )}
 
-      {/* ══ FILTER SECTION ═════════════════════════════════════════════════ */}
-      <div className="ucr-card">
-        <div className="ucr-header">
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: "#eff6ff", border: "1px solid #dbeafe", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <BarChart3 size={17} style={{ color: "#2563eb" }} />
+      {/* Filter Card Container */}
+      <div className="dc-card">
+        <div className="dc-header">
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div className="dc-page-icon">
+              <BarChart3 size={16} color="#fff" />
             </div>
             <div>
-              <h2 style={{ fontSize: 15, fontWeight: 700, color: "#111827", margin: 0 }}>Target Report</h2>
-              <p style={{ fontSize: 11, color: "#6b7280", margin: 0, marginTop: 2 }}>View and analyze target submissions</p>
+              <h2 className="ucr-brand" style={{ fontSize: 16, fontWeight: 700, color: "#1e293b", letterSpacing: "-0.01em", lineHeight: 1.2 }}>Target Report</h2>
+              <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>View and analyze target submissions</p>
             </div>
           </div>
-
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: "#6b7280" }}>FILTER</span>
-            <button 
-              onClick={() => setIsFilterOpen(!isFilterOpen)} 
-              style={{ 
-                width: 34, height: 18, borderRadius: 20, background: isFilterOpen ? "#2563eb" : "#d1d5db", 
-                position: "relative", cursor: "pointer", transition: "0.2s", border: "none" 
-              }}
-            >
-              <div style={{ 
-                width: 14, height: 14, borderRadius: "50%", background: "#fff", 
-                position: "absolute", top: 2, left: isFilterOpen ? 18 : 2, transition: "0.2s" 
-              }} />
-            </button>
-          </div>
+          <button type="button" onClick={() => setIsFilterOpen(!isFilterOpen)} style={{ background: "none", border: "none", cursor: "pointer" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span className="ucr-brand" style={{ fontSize: 13, fontWeight: 600, color: "#475569" }}>Filter</span>
+              <div style={{ width: 40, height: 20, borderRadius: 100, position: "relative", cursor: "pointer", transition: "0.2s", background: isFilterOpen ? "#3B82F6" : "#cbd5e1" }}>
+                <div style={{ width: 14, height: 14, background: "#fff", borderRadius: "50%", position: "absolute", top: 3, left: isFilterOpen ? 23 : 3, transition: "0.2s" }} />
+              </div>
+            </div>
+          </button>
         </div>
 
         {isFilterOpen && (
-          <div className="ucr-body">
+          <div className="dc-body">
+            {/* Row 1: User wise Selection Row */}
             <div className="ucr-grid-4">
-              
-              {/* Row 1 */}
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ width: 16, height: 16, borderRadius: "50%", border: "4px solid #2563eb", background: "#fff" }} />
-                <span style={{ fontSize: 13, fontWeight: 600, color: "#4b5563" }}>* User wise</span>
+                <div style={{ width: 16, height: 16, borderRadius: "50%", border: "5px solid #2563eb", background: "#fff" }} />
+                <span style={{ fontSize: 13, fontWeight: 600, color: "#475569", whiteSpace: "nowrap" }}>* User wise</span>
               </div>
-              <MultiSelectDropdown label="SELECT STATE *" options={stateOpts} selectedIds={filters.stateIds} onChange={(v) => handleFilterChange("stateIds", v)} />
-              <MultiSelectDropdown label="SELECT DISTRICT *" options={distOpts} selectedIds={filters.districtIds} onChange={(v) => handleFilterChange("districtIds", v)} disabled={!filters.stateIds.length} />
-              <MultiSelectDropdown label="SELECT EMPLOYEE *" options={empOpts} selectedIds={filters.employeeIds} onChange={(v) => handleFilterChange("employeeIds", v)} disabled={!filters.districtIds.length} />
+              <MultiSelectDropdown label="Select State" options={stateOpts} selectedIds={filters.stateIds} onChange={(v) => handleFilterChange("stateIds", v)} />
+              <MultiSelectDropdown label="Select District" options={distOpts} selectedIds={filters.districtIds} onChange={(v) => handleFilterChange("districtIds", v)} disabled={!filters.stateIds?.length} />
+              <MultiSelectDropdown label="Select Employee" options={empOpts} selectedIds={filters.employeeIds} onChange={(v) => handleFilterChange("employeeIds", v)} disabled={!filters.districtIds?.length} />
+            </div>
 
-              {/* Row 2 */}
+            {/* Row 2: Monthly Timeline Row */}
+            <div className="ucr-grid-4">
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ width: 16, height: 16, borderRadius: "50%", border: "4px solid #2563eb", background: "#fff" }} />
-                <span style={{ fontSize: 13, fontWeight: 600, color: "#4b5563" }}>* Monthly</span>
+                <div style={{ width: 16, height: 16, borderRadius: "50%", border: "5px solid #2563eb", background: "#fff" }} />
+                <span style={{ fontSize: 13, fontWeight: 600, color: "#475569", whiteSpace: "nowrap" }}>* Monthly</span>
               </div>
-              <SingleDropdown label="SELECT YEAR *" options={YEARS} value={filters.year} onSelect={(v) => handleFilterChange("year", v)} />
-              <div style={{ gridColumn: "span 2" }} className="hide-on-mobile"></div>
+              <SingleDropdown label="Select Year" options={YEARS} value={filters.year} onSelect={(v) => handleFilterChange("year", v)} />
+              <div className="col-span-2 hide-on-mobile"></div>
+            </div>
 
-              {/* Row 3 */}
+            {/* Row 3: Amount Wise Action Button Row */}
+            <div className="ucr-grid-4">
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ width: 16, height: 16, borderRadius: "50%", border: "4px solid #2563eb", background: "#fff" }} />
-                <span style={{ fontSize: 13, fontWeight: 600, color: "#4b5563" }}>* Amount Wise</span>
+                <div style={{ width: 16, height: 16, borderRadius: "50%", border: "5px solid #2563eb", background: "#fff" }} />
+                <span style={{ fontSize: 13, fontWeight: 600, color: "#475569", whiteSpace: "nowrap" }}>* Amount Wise</span>
               </div>
-              <div>
+              <div style={{ display: "flex", height: 40, alignItems: "center" }}>
                 <button 
+                  type="button"
                   onClick={handleViewTarget} 
                   disabled={isLoading} 
-                  style={{
-                    height: 40, width: "100%", borderRadius: 8, background: "#2563eb", color: "#fff",
-                    fontSize: 13, fontWeight: 700, border: "none", cursor: isLoading ? "not-allowed" : "pointer",
-                    opacity: isLoading ? 0.6 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8
-                  }}
+                  className="dc-submit-btn"
+                  style={{ width: "100%", justifyContent: "center", background: "#2563eb" }}
                 >
-                  {isLoading ? <Loader2 size={16} style={{ animation: "ucr-spin 1s linear infinite" }} /> : <Eye size={16} />}
+                  {isLoading ? <Loader2 size={14} style={{ animation: "dc-spin 1s linear infinite" }} /> : <Eye size={14} />}
                   View Target
                 </button>
               </div>
-              <div style={{ gridColumn: "span 2" }} className="hide-on-mobile"></div>
-
+              <div className="col-span-2 hide-on-mobile"></div>
             </div>
           </div>
         )}
       </div>
 
-      {/* ══ TABLE SECTION (Target View Amount Wise) ══════════════════════════ */}
       {tableVisible && (
-        <div className="ucr-card animate-in slide-in-from-bottom-4 duration-500">
-          <div className="ucr-header" style={{ background: "#f9fafb" }}>
-            <h3 style={{ fontSize: 14, fontWeight: 700, color: "#374151", margin: 0 }}>Target View Amount Wise</h3>
+        <div className="dc-card">
+          <div className="dc-header" style={{ background: "#f8fafc" }}>
+            <h3 className="ucr-brand" style={{ fontSize: 14, fontWeight: 700, color: "#475569" }}>Target View Amount Wise</h3>
             <button 
+              type="button"
               onClick={handleExportExcel} 
               style={{
-                height: 36, width: 36, borderRadius: 8, background: "#ecfdf5", border: "1px solid #a7f3d0",
-                color: "#059669", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer"
+                height: 40, width: 40, borderRadius: 8, background: "#ecfdf5", border: "1px solid #a7f3d0",
+                color: "#059669", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 2px 8px rgba(22,163,74,0.15)"
               }}
               title="Export to Excel"
             >
@@ -351,39 +527,37 @@ export default function TargetView() {
             </button>
           </div>
 
-          <div className="ucr-body" style={{ padding: 0 }}>
+          <div className="dc-body" style={{ padding: 0 }}>
             <div className="ucr-table-container" style={{ border: "none", borderRadius: "0 0 16px 16px" }}>
               <table className="ucr-table">
                 <thead>
                   <tr>
-                    <th style={{ textAlign: "left", borderRight: "1px solid #f3f4f6" }}>User Name</th>
+                    <th style={{ textAlign: "left", borderRight: "1px solid #edf2f7" }}>User Name</th>
                     {MONTH_COLUMNS.map((month) => (
-                      <th key={month.key} style={{ minWidth: 80, borderRight: "1px solid #f3f4f6" }}>
+                      <th key={month.key} style={{ minWidth: 85, borderRight: "1px solid #edf2f7" }}>
                         {month.label}
                       </th>
                     ))}
-                    <th style={{ background: "#1d4ed8", color: "#fff" }}>TOTAL</th>
+                    <th style={{ background: "#2563eb", color: "#fff" }}>TOTAL</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody>
                   {reportData.length === 0 ? (
                     <tr>
-                      <td colSpan={14} style={{ textAlign: "center", padding: 40, color: "#9ca3af" }}>
+                      <td colSpan={14} style={{ textAlign: "center", padding: 40, color: "#94a3b8", fontStyle: "italic" }}>
                         No target data found for the selected filters.
                       </td>
                     </tr>
                   ) : (
-                    reportData.map((row) => (
-                      <tr key={row.employeeId}>
-                        <td style={{ fontWeight: 700, color: "#374151", textAlign: "left", borderRight: "1px solid #f3f4f6" }}>{row.employeeName}</td>
-                        
+                    reportData.map((row, index) => (
+                      <tr key={row.employeeId || index}>
+                        <td style={{ fontWeight: 700, color: "#1e293b", textAlign: "left", borderRight: "1px solid #edf2f7" }}>{row.employeeName || "-"}</td>
                         {MONTH_COLUMNS.map((month) => (
-                          <td key={month.key} style={{ fontWeight: 600, borderRight: "1px solid #f3f4f6" }}>
+                          <td key={month.key} style={{ fontWeight: 600, borderRight: "1px solid #edf2f7" }}>
                             {row.monthlyTargets?.[month.key] || 0}
                           </td>
                         ))}
-                        
-                        <td style={{ fontWeight: 700, color: "#111827", background: "#f9fafb" }}>
+                        <td style={{ fontWeight: 700, color: "#1e293b", background: "#f8fafc" }}>
                           {row.total || 0}
                         </td>
                       </tr>
@@ -392,16 +566,14 @@ export default function TargetView() {
                 </tbody>
                 {reportData.length > 0 && (
                   <tfoot>
-                    <tr style={{ background: "#f3f4f6" }}>
-                      <td style={{ fontWeight: 700, color: "#111827", textAlign: "center", padding: "14px 16px", borderRight: "1px solid #e5e7eb" }}>TOTAL</td>
-                      
+                    <tr style={{ background: "#f8fafc" }}>
+                      <td style={{ fontWeight: 700, color: "#1e293b", textAlign: "center", padding: "14px 16px", borderRight: "1px solid #edf2f7" }}>TOTAL</td>
                       {MONTH_COLUMNS.map((month) => (
-                        <td key={month.key} style={{ fontWeight: 700, color: "#111827", padding: "14px 16px", borderRight: "1px solid #e5e7eb" }}>
+                        <td key={month.key} style={{ fontWeight: 700, color: "#1e293b", padding: "14px 16px", borderRight: "1px solid #edf2f7" }}>
                           {monthTotals?.[month.key] || 0}
                         </td>
                       ))}
-                      
-                      <td style={{ fontWeight: 700, color: "#1d4ed8", background: "#eff6ff", padding: "14px 16px" }}>
+                      <td style={{ fontWeight: 700, color: "#2563eb", background: "#eff6ff", padding: "14px 16px" }}>
                         {grandTotal || 0}
                       </td>
                     </tr>
@@ -412,278 +584,208 @@ export default function TargetView() {
           </div>
         </div>
       )}
-
     </div>
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════
-// Helper Components
-// ═══════════════════════════════════════════════════════════════════
-
+// ─── Searchable Portal Configuration Single Dropdown Component ───
 function SingleDropdown({ label, options, value, onSelect, disabled }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [pos, setPos] = useState({ top: 0, left: 0, width: 0 });
+  const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
   const ref = useRef(null);
 
-  const selectedOption = options.find((option) => String(option.id ?? option.value) === String(value));
-  const active = isOpen || Boolean(value);
-
-  const openMenu = () => {
-    if (disabled) return;
-    const rect = ref.current?.getBoundingClientRect();
-    if (rect) {
-      setPos({
-        top: rect.bottom + 4,
-        left: rect.left,
-        width: rect.width
-      });
-    }
-    setIsOpen(true);
-  };
+  const selectedOption = options.find((option) => String(option.value) === String(value));
+  const hasVal = Boolean(value !== "" && value !== null && value !== undefined);
+  const active = isOpen || hasVal;
+  const borderColor = isOpen ? "#3B82F6" : hasVal ? "#bfdbfe" : "#e2e8f0";
+  const bgColor = disabled ? "#f8fafc" : isOpen ? "#eff6ff" : "#ffffff";
+  const shadow  = isOpen && !disabled ? "0 0 0 3px rgba(59,130,246,0.15)" : "none";
+  const labelColor = isOpen ? "#3B82F6" : hasVal ? "#64748b" : "#94a3b8";
 
   useEffect(() => {
-    if (!isOpen) return;
-    const handleScroll = (e) => { if (e.target?.closest && e.target.closest('.dropdown-portal')) return; setIsOpen(false); };
-    const handleResize = () => setIsOpen(false);
-    window.addEventListener("scroll", handleScroll, true);
-    window.addEventListener("resize", handleResize);
-    return () => { window.removeEventListener("scroll", handleScroll, true); window.removeEventListener("resize", handleResize); };
-  }, [isOpen]);
+    const handleOutsideClick = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setIsOpen(false);
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
 
-  return (
-    <div className="relative w-full select-none mt-1">
-      <div
-        ref={ref}
-        onClick={openMenu}
-        style={{
-          width: "100%", height: FH, borderRadius: 8, padding: "0 12px", fontSize: 13, display: "flex",
-          alignItems: "center", border: `1.5px solid ${active && !disabled ? "#2563eb" : "#d1d5db"}`,
-          cursor: disabled ? "not-allowed" : "pointer", background: disabled ? "#f3f4f6" : "#fff",
-          transition: "border-color 0.2s"
-        }}
-      >
-        <span style={{ flex: 1, fontWeight: 600, color: (Boolean(value) && !disabled) ? "#111827" : disabled && Boolean(value) ? "#6b7280" : "transparent", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginRight: 8 }}>
-          {selectedOption?.label || " "}
-        </span>
-        <ChevronDown size={14} style={{ color: "#9ca3af", transform: isOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "0.2s", flexShrink: 0 }} />
-      </div>
-      <label
-        style={{
-          position: "absolute", left: 10, top: active ? -9 : 12, fontSize: active ? 10 : 12,
-          fontWeight: 600, color: disabled ? "#9ca3af" : (active ? "#2563eb" : "#9ca3af"), background: disabled ? (active ? "#f3f4f6" : "transparent") : "#fff",
-          padding: "0 4px", transition: "0.2s", pointerEvents: "none",
-          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "calc(100% - 20px)"
-        }}
-      >
-        {label}
-      </label>
-
-      {isOpen && !disabled && (
-        <Portal top={pos.top} left={pos.left} width={pos.width} onClose={() => setIsOpen(false)}>
-          <div style={{ maxHeight: 250, overflowY: "auto", padding: "4px 0" }}>
-            {options.length === 0 ? (
-              <p style={{ padding: "12px 16px", fontSize: 13, color: "#9ca3af", margin: 0, textAlign: "center", fontStyle: "italic" }}>No options available</p>
-            ) : (
-              options.map((opt) => (
-                <div
-                  key={opt.id ?? opt.value}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    onSelect(opt.id ?? opt.value);
-                    setIsOpen(false);
-                  }}
-                  style={{
-                    padding: "10px 12px", fontSize: 13, cursor: "pointer", fontWeight: 600,
-                    background: String(value) === String(opt.id ?? opt.value) ? "#eff6ff" : "transparent",
-                    color: String(value) === String(opt.id ?? opt.value) ? "#2563eb" : "#374151"
-                  }}
-                >
-                  {opt.label}
-                </div>
-              ))
-            )}
-          </div>
-        </Portal>
-      )}
-    </div>
-  );
-}
-
-function MultiSelectDropdown({ label, options, selectedIds, onChange, disabled = false }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [pos, setPos] = useState({ top: 0, left: 0, width: 0 });
-  const ref = useRef(null);
-
-  const toggleValue = (value) => {
-    if (selectedIds.includes(value)) {
-      onChange(selectedIds.filter((item) => String(item) !== String(value)));
-      return;
-    }
-    onChange([...selectedIds, String(value)]);
-  };
-
-  const selectAll = () => onChange(options.map((option) => String(option.id || option.value)));
-  const clearAll = () => onChange([]);
-
-  const selectedLabel = options
-    .filter((option) => selectedIds.includes(String(option.id || option.value)))
-    .map((option) => option.label)
-    .join(", ");
-
-  const hasValue = selectedIds.length > 0;
-  const active = isOpen || hasValue;
-
-  const openMenu = () => {
+  const handleTriggerClick = () => {
     if (disabled) return;
-    const rect = ref.current?.getBoundingClientRect();
-    if (rect) {
-      setPos({
-        top: rect.bottom + 4,
-        left: rect.left,
-        width: rect.width
+    if (!isOpen && ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      setCoords({
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX,
+        width: rect.width,
       });
     }
-    setIsOpen(true);
+    setIsOpen(!isOpen);
   };
 
   return (
-    <div className="relative w-full select-none mt-1">
+    <div ref={ref} style={{ position: "relative", width: "100%", userSelect: "none" }} className="dc-field-wrap">
       <div
-        ref={ref}
-        onClick={openMenu}
+        onClick={handleTriggerClick}
         style={{
-          width: "100%", height: FH, borderRadius: 8, padding: "0 12px", fontSize: 13, display: "flex",
-          alignItems: "center", border: `1.5px solid ${active && !disabled ? "#2563eb" : "#d1d5db"}`,
-          cursor: disabled ? "not-allowed" : "pointer", background: disabled ? "#f3f4f6" : "#fff",
-          transition: "border-color 0.2s"
+          width: "100%", height: FH, borderRadius: 8, padding: "0 36px 0 12px", fontSize: 13, display: "flex",
+          alignItems: "center", border: `1.5px solid ${disabled ? "#f1f5f9" : borderColor}`, cursor: disabled ? "not-allowed" : "pointer",
+          background: bgColor + " !important", boxShadow: disabled ? "none" : shadow, transition: "all 0.18s", boxSizing: "border-box"
         }}
       >
-        <span style={{ flex: 1, fontWeight: 600, color: hasValue ? "#111827" : "transparent", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginRight: 8 }}>
-          {selectedLabel || " "}
+        <span style={{ flex: 1, fontWeight: 500, color: value ? "#1e293b" : "transparent", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontSize: 14 }}>
+          {selectedOption?.label || " "}
         </span>
-        <ChevronDown size={14} style={{ color: "#9ca3af", transform: isOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "0.2s", flexShrink: 0 }} />
+        <div style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: isOpen ? "#3B82F6" : "#94a3b8", display: "flex", alignItems: "center" }}>
+          <ChevronDown size={15} style={{ transform: isOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }} />
+        </div>
       </div>
       <label
         style={{
-          position: "absolute", left: 10, top: active ? -9 : 12, fontSize: active ? 10 : 12,
-          fontWeight: 600, color: disabled ? "#9ca3af" : (active ? "#2563eb" : "#9ca3af"), background: disabled ? (active ? "#f3f4f6" : "transparent") : "#fff",
-          padding: "0 4px", transition: "0.2s", pointerEvents: "none",
-          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "calc(100% - 20px)"
+          position: "absolute", left: 10, top: active ? 0 : "50%", transform: "translateY(-50%)", fontSize: active ? 11 : 13,
+          fontWeight: 500, color: disabled ? "#cbd5e1" : labelColor, background: active ? "#ffffff" : "transparent",
+          padding: active ? "0 5px" : "0", transition: "all 0.12s ease-out", pointerEvents: "none", zIndex: 20
         }}
       >
         {label}
       </label>
 
-      {isOpen && !disabled && (
-        <Portal top={pos.top} left={pos.left} width={pos.width} onClose={() => setIsOpen(false)}>
-          <div style={{ display: "flex", borderBottom: "1px solid #f3f4f6" }}>
-            <button
-              type="button"
-              onMouseDown={(e) => {
-                e.preventDefault();
-                selectAll();
-              }}
-              style={{ flex: 1, padding: "8px 0", fontSize: 12, fontWeight: 700, color: "#fff", background: "#2563eb", border: "none", cursor: "pointer" }}
-            >
-              Select All
-            </button>
-            <button
-              type="button"
-              onMouseDown={(e) => {
-                e.preventDefault();
-                clearAll();
-              }}
-              style={{ flex: 1, padding: "8px 0", fontSize: 12, fontWeight: 700, color: "#fff", background: "#ef4444", border: "none", cursor: "pointer" }}
-            >
-              Clear All
-            </button>
-          </div>
-
-          <div style={{ maxHeight: 250, overflowY: "auto", padding: "4px 0" }}>
-            {options.length === 0 ? (
-              <p style={{ padding: "12px 16px", fontSize: 13, color: "#9ca3af", margin: 0, textAlign: "center", fontStyle: "italic" }}>No options available.</p>
+      {isOpen && !disabled && createPortal(
+        <div className="dc-portal-dropdown" style={{ position: "absolute", top: coords.top + 4, left: coords.left, width: coords.width }}>
+          <ul style={{ maxHeight: 200, overflowY: "auto", margin: 0, padding: "4px 0", listStyle: "none", background: "#ffffff" }}>
+            {(!options || options.length === 0) ? (
+              <li style={{ padding: "12px 16px", fontSize: 12, color: "#94a3b8", fontStyle: "italic", textAlign: "center" }}>No options available</li>
             ) : (
-              options.map((option) => {
-                const optId = String(option.id || option.value);
-                const isSelected = selectedIds.includes(optId);
+              options.map((opt, i) => {
+                const optValue = opt.id ?? opt.value;
                 return (
-                  <button
-                    key={optId}
-                    type="button"
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      toggleValue(optId);
-                    }}
+                  <li
+                    key={i}
+                    className={`dc-opt${String(value) === String(optValue) ? " selected" : ""}`}
                     style={{
-                      width: "100%", textAlign: "left", padding: "10px 16px", fontSize: 13, fontWeight: 600,
-                      display: "flex", alignItems: "center", gap: 10, background: isSelected ? "#eff6ff" : "transparent",
-                      color: isSelected ? "#2563eb" : "#4b5563", border: "none", cursor: "pointer"
+                      padding: "10px 14px", fontSize: "13.5px", borderRadius: "8px", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px",
+                      color: String(value) === String(optValue) ? "#2563eb" : "#475569",
+                      backgroundColor: String(value) === String(optValue) ? "rgba(59,130,246,0.08)" : "#ffffff",
+                      fontWeight: String(value) === String(optValue) ? "600" : "500"
                     }}
+                    onMouseDown={(e) => { e.preventDefault(); onSelect(optValue); setIsOpen(false); }}
                   >
-                    <span
-                      style={{
-                        width: 16, height: 16, borderRadius: 4, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
-                        border: isSelected ? "2px solid #2563eb" : "2px solid #d1d5db", background: isSelected ? "#2563eb" : "#fff"
-                      }}
-                    >
-                      {isSelected && (
-                        <svg viewBox="0 0 10 8" style={{ width: 10, height: 8 }} fill="none">
-                          <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      )}
-                    </span>
-                    {option.label}
-                  </button>
+                    {String(value) === String(optValue) && <Check size={12} style={{ color: "#3B82F6", flexShrink: 0 }} />}
+                    {opt.label}
+                  </li>
                 );
               })
             )}
-          </div>
-        </Portal>
+          </ul>
+        </div>,
+        document.body
       )}
     </div>
   );
 }
 
-function Portal({ top, left, width, onClose, children }) {
+// ─── Searchable Portal Multi-Select Configuration Dropdown Component ───
+function MultiSelectDropdown({ label, options = [], selectedIds = [], onChange, disabled }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
   const ref = useRef(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      const handleMouseDown = (e) => {
-        if (ref.current && !ref.current.contains(e.target)) {
-          onClose();
-        }
-      };
-      document.addEventListener("mousedown", handleMouseDown);
-      return () => document.removeEventListener("mousedown", handleMouseDown);
-    }, 10);
-
-    return () => clearTimeout(timer);
-  }, [onClose]);
-
-  useEffect(() => {
-    const handleScroll = (e) => {
-      if (ref.current && ref.current.contains(e.target)) return;
-      onClose();
+    const handleOutsideClick = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setIsOpen(false);
     };
-    
-    window.addEventListener("scroll", handleScroll, true);
-    window.addEventListener("resize", onClose);
-    
-    return () => {
-      window.removeEventListener("scroll", handleScroll, true);
-      window.removeEventListener("resize", onClose);
-    };
-  }, [onClose]);
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
+
+  const handleTriggerClick = () => {
+    if (disabled) return;
+    if (!isOpen && ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      setCoords({
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX,
+        width: rect.width,
+      });
+    }
+    setIsOpen(!isOpen);
+  };
+
+  const toggle = id => onChange(selectedIds.includes(id) ? selectedIds.filter(i => i !== id) : [...selectedIds, id]);
+  const selectAll = () => onChange((options || []).map(o => String(o.id ?? o.value)));
+  const clearAll = () => onChange([]);
+
+  const hasValue = selectedIds.length > 0;
+  const displayText = hasValue ? (options || []).filter(o => selectedIds.includes(String(o?.id ?? o?.value))).map(o => o?.label).join(", ") : "";
+  const borderColor = isOpen ? "#3B82F6" : hasValue ? "#bfdbfe" : "#e2e8f0";
+  const bgColor = disabled ? "#f8fafc" : isOpen ? "#eff6ff" : "#ffffff";
+  const shadow  = isOpen && !disabled ? "0 0 0 3px rgba(59,130,246,0.15)" : "none";
+  const labelColor = isOpen ? "#3B82F6" : hasValue ? "#64748b" : "#94a3b8";
+  const active = isOpen || hasValue;
 
   return (
-    <div
-      ref={ref}
-      style={{ position: "fixed", top, left, width, zIndex: 99999 }}
-      className="dropdown-portal bg-white border border-[#e5e7eb] rounded-lg shadow-xl overflow-hidden"
-    >
-      {children}
+    <div ref={ref} style={{ position: "relative", width: "100%", userSelect: "none" }} className="dc-field-wrap">
+      <div
+        onClick={handleTriggerClick}
+        style={{
+          width: "100%", height: FH, borderRadius: 8, padding: "0 36px 0 12px", fontSize: 13, display: "flex",
+          alignItems: "center", border: `1.5px solid ${disabled ? "#f1f5f9" : borderColor}`, cursor: disabled ? "not-allowed" : "pointer",
+          background: bgColor + " !important", boxShadow: disabled ? "none" : shadow, transition: "all 0.18s", boxSizing: "border-box"
+        }}
+      >
+        <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 500, color: hasValue ? (disabled ? "#94a3b8" : "#1e293b") : "transparent", fontSize: 14 }}>
+          {displayText || " "}
+        </span>
+        <div style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: isOpen ? "#3B82F6" : "#94a3b8", display: "flex", alignItems: "center" }}>
+          <ChevronDown size={15} style={{ transform: isOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }} />
+        </div>
+      </div>
+      <label
+        style={{
+          position: "absolute", left: 10, top: active ? 0 : "50%", transform: "translateY(-50%)", fontSize: active ? 11 : 13,
+          fontWeight: 500, color: disabled ? "#cbd5e1" : labelColor, background: active ? "#ffffff" : "transparent",
+          padding: active ? "0 5px" : "0", transition: "all 0.12s ease-out", pointerEvents: "none", zIndex: 20
+        }}
+      >
+        {label}
+      </label>
+
+      {isOpen && !disabled && createPortal(
+        <div className="dc-portal-dropdown" style={{ position: "absolute", top: coords.top + 4, left: coords.left, width: coords.width }}>
+          <div style={{ display: "flex", borderBottom: "1px solid #edf2f7", background: "#f8fafc" }}>
+            <button type="button" onMouseDown={e => { e.preventDefault(); selectAll(); }} style={{ flex: 1, padding: "10px", fontSize: 11, fontWeight: 700, background: "transparent", color: "#2563eb", border: "none", cursor: "pointer", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Select All</button>
+            <button type="button" onMouseDown={e => { e.preventDefault(); clearAll(); }} style={{ flex: 1, padding: "10px", fontSize: 11, fontWeight: 700, background: "transparent", color: "#ef4444", border: "none", cursor: "pointer", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Clear All</button>
+          </div>
+          <ul style={{ maxHeight: 200, overflowY: "auto", padding: "4px 0", margin: 0, listStyle: "none", background: "#ffffff" }}>
+            {(!options || options.length === 0) ? (
+              <li style={{ padding: "12px 16px", fontSize: 12, color: "#94a3b8", fontStyle: "italic", textAlign: "center" }}>No options available</li>
+            ) : (
+              options.map((opt, idx) => {
+                const optId = String(opt.id ?? opt.value);
+                const isSel = selectedIds.includes(optId);
+                return (
+                  <li
+                    key={idx}
+                    className={`dc-opt${isSel ? " selected" : ""}`}
+                    style={{
+                      padding: "10px 14px", fontSize: "13.5px", borderRadius: "8px", cursor: "pointer",
+                      display: "flex", alignItems: "center", gap: "8px",
+                      color: isSel ? "#2563eb" : "#475569",
+                      backgroundColor: isSel ? "rgba(59,130,246,0.08)" : "#ffffff",
+                      fontWeight: isSel ? "600" : "500"
+                    }}
+                    onMouseDown={(e) => { e.preventDefault(); toggle(optId); }}
+                  >
+                    <input type="checkbox" checked={isSel} readOnly style={{ accentColor: "#3B82F6", cursor: "pointer", marginRight: 4 }} />
+                    {opt.label}
+                  </li>
+                );
+              })
+            )}
+          </ul>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

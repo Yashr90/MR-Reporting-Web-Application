@@ -1,58 +1,15 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
   Loader2, AlertCircle, CheckCircle2, ChevronDown,
   Filter, Check, Save, FileSpreadsheet
 } from "lucide-react";
 import api from "../../../services/api";
 
-// ─── Global responsive styles (from reference) ───────────────────────────────
-const STYLES = `
-  *, *::before, *::after { box-sizing: border-box; }
-  .ucr-wrap  { width:100%; padding-bottom:48px; font-family:Inter,sans-serif; overflow-x: hidden; }
-  .ucr-card  { background:#fff; border-radius:16px; box-shadow:0 1px 4px rgba(0,0,0,0.07); border:1px solid #f3f4f6; overflow:visible; margin-bottom: 24px; }
-  .ucr-header{ padding:16px 20px; border-bottom:1px solid #f3f4f6; display:flex; align-items:center; gap:12px; }
-  .ucr-body  { padding:24px; }
-  .ucr-footer{ padding:14px 24px; background:#f9fafb; border-top:1px solid #f3f4f6; display:flex; align-items:center; justify-content:flex-end; border-radius:0 0 16px 16px; flex-wrap: wrap; gap: 12px; }
-
-  /* Responsive Table Scroll Logic */
-  .ucr-table-container {
-    border: 1px solid #f3f4f6;
-    border-radius: 12px;
-    overflow-x: auto;
-    background: #fff;
-    -webkit-overflow-scrolling: touch;
-  }
-  .ucr-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 1000px; }
-  .ucr-table thead { background: #f9fafb; border-bottom: 1px solid #f3f4f6; }
-  .ucr-table th { padding: 12px 16px; text-align: left; font-weight: 700; color: #6b7280; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
-  .ucr-table td { padding: 12px 16px; color: #374151; border-bottom: 1px solid #f3f4f6; white-space: nowrap; }
-
-  .ucr-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:20px; margin-bottom:24px; }
-  .ucr-grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:20px; margin-bottom:24px; }
-
-  /* Responsive Col Spans */
-  .col-span-2 { grid-column: span 2; }
-  .col-span-4 { grid-column: span 4; }
-
-  @media(max-width:1024px){
-    .ucr-grid, .ucr-grid-4 { grid-template-columns:repeat(2,1fr); gap:16px; }
-    .col-span-4 { grid-column: span 2; }
-  }
-  @media(max-width:768px){
-    .ucr-grid, .ucr-grid-4 { grid-template-columns:1fr; gap:16px; }
-    .col-span-2, .col-span-4 { grid-column: span 1 !important; }
-    .ucr-body  { padding:16px; }
-    .ucr-header { padding: 16px; flex-direction: column; align-items: flex-start; }
-    .ucr-header > div { width: 100%; }
-    .ucr-header > button { align-self: flex-end; margin-top: -30px; }
-    .ucr-footer { justify-content: center; }
-  }
-  @keyframes ucr-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
-`;
-
+// ─── Constants & Variables Matrix ───────────────────────────────────────────
 const FH = 40;
+const PAGE_SIZES = [10, 20, 50];
 
-// ─── Constants ───────────────────────────────────────────────────────────────
 const MONTHS = [
   { value: "January", label: "January" }, { value: "February", label: "February" },
   { value: "March", label: "March" }, { value: "April", label: "April" },
@@ -62,7 +19,6 @@ const MONTHS = [
   { value: "November", label: "November" }, { value: "December", label: "December" }
 ];
 
-// Helper to convert Month String to Number for the API
 const monthToNumber = {
   "January": 1, "February": 2, "March": 3, "April": 4, "May": 5, "June": 6,
   "July": 7, "August": 8, "September": 9, "October": 10, "November": 11, "December": 12
@@ -74,16 +30,246 @@ const YEARS = Array.from({ length: 5 }, (_, i) => ({
   label: String(CURRENT_YEAR - 2 + i)
 }));
 
+/* ─── Premium UI Styles & Utilities ──────────────────────────────────────── */
+const STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght=500;600;700;800&family=Inter:wght=400;500;600;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  .dc-wrap {
+    font-family: 'Inter', sans-serif;
+    width: 100%;
+  }
+
+  .ucr-brand { font-family: 'Plus Jakarta Sans', sans-serif; }
+
+  /* ── Single Unified Card Container ── */
+  .dc-card {
+    background: #ffffff !important;
+    border: 1px solid #edf2f7;
+    border-radius: 16px;
+    isolation: isolate;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+    position: relative;
+    overflow: visible !important;
+    margin-bottom: 24px;
+  }
+
+  /* ── Card Header ── */
+  .dc-header {
+    padding: 24px 28px 16px;
+    background: #ffffff !important;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+    border-radius: 16px 16px 0 0 !important;
+    overflow: visible !important;
+  }
+
+  .dc-page-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #3B82F6, #2563eb);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 3px 8px rgba(59,130,246,0.2);
+    flex-shrink: 0;
+  }
+
+  /* ── Form Body ── */
+  .dc-body { 
+    padding: 20px 28px 24px; 
+    background: #ffffff !important; 
+    border-bottom-left-radius: 16px; 
+    border-bottom-right-radius: 16px;
+    overflow: visible !important;
+  }
+
+  /* ── Form Footer ── */
+  .dc-footer {
+    padding: 20px 28px 24px;
+    background: #ffffff !important;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    border-radius: 16px;
+    border-top: 1px solid #f1f5f9;
+  }
+
+  /* ── Responsive Input Grids ── */
+  .ucr-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-bottom: 24px; }
+  .ucr-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px 16px; margin-bottom: 0; }
+
+  .col-span-2 { grid-column: span 2; }
+  .col-span-4 { grid-column: span 4; }
+
+  @media(max-width: 1200px) {
+    .ucr-grid-4 { grid-template-columns: repeat(3, 1fr); }
+    .col-span-2 { grid-column: span 1 !important; }
+  }
+  @media(max-width: 1024px) {
+    .ucr-grid, .ucr-grid-4 { grid-template-columns: repeat(2, 1fr); gap: 18px; }
+  }
+  @media(max-width: 640px) {
+    .ucr-grid, .ucr-grid-4 { grid-template-columns: 1fr; gap: 20px; }
+    .dc-body { padding: 20px 16px; }
+    .dc-header { padding: 20px 16px 12px; }
+    .dc-footer { padding: 16px; }
+    .dc-submit-btn { width: auto !important; }
+  }
+
+  /* ── Portal Dropdown Layer ── */
+  .dc-portal-dropdown {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12), 0 4px 12px rgba(15, 23, 42, 0.04);
+    z-index: 9999999 !important;
+    overflow: hidden;
+  }
+
+  .dc-portal-dropdown ul {
+    background: #ffffff !important;
+    max-height: 220px;
+    overflow-y: auto;
+    padding: 6px;
+    margin: 0;
+    list-style: none;
+    scrollbar-width: thin;
+    scrollbar-color: #e2e8f0 transparent;
+  }
+
+  .dc-opt {
+    padding: 10px 14px;
+    font-size: 13.5px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #475569;
+    background: #ffffff !important;
+    transition: all 0.12s;
+    font-weight: 500;
+  }
+  .dc-opt:hover   { background: rgba(59,130,246,0.06) !important; color: #2563eb; }
+  .dc-opt.selected { background: rgba(59,130,246,0.08) !important; color: #2563eb; font-weight: 600; }
+
+  /* ── Premium Compact Table Container ── */
+  .ucr-table-container {
+    border: 1px solid #edf2f7;
+    border-radius: 12px;
+    overflow-x: auto;
+    background: #ffffff !important;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.01);
+    margin-bottom: 16px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .ucr-table { width: 100%; border-collapse: collapse; font-size: 13.5px; text-align: left; min-width: 1000px; }
+  .ucr-table thead tr { position: sticky; top: 0; z-index: 10; }
+  .ucr-table thead { background: #f8fafc; }
+  
+  .ucr-table th { 
+    padding: 12px 16px; 
+    font-size: 11px; 
+    font-weight: 600; 
+    text-transform: uppercase; 
+    letter-spacing: 0.05em; 
+    color: #64748b;
+    border-bottom: 1px solid #edf2f7; 
+    white-space: nowrap;
+  }
+  .ucr-table td { 
+    padding: 11px 16px; 
+    color: #475569; 
+    border-bottom: 1px solid #f8fafc; 
+    font-weight: 500; 
+    white-space: nowrap; 
+  }
+  .ucr-table tbody tr:last-child td { border-bottom: none; }
+  .ucr-table tbody tr:hover { background: #f8fafc; }
+
+  /* ── System Error Banner ── */
+  .dc-error-banner {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 12px;
+    padding: 12px 16px;
+    color: #dc2626;
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  /* ── Action Buttons ── */
+  .dc-submit-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    background: #2563eb !important;
+    color: #fff !important;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+    transition: all 0.2s;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    letter-spacing: 0.01em;
+    height: 40px;
+  }
+  .dc-submit-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.45);
+    background: #1d4ed8 !important;
+  }
+  .dc-submit-btn:disabled { background: #93c5fd !important; color: #ffffff !important; cursor: not-allowed; box-shadow: none; opacity: 0.8 !important; }
+
+  .dc-overlay {
+    position: fixed; inset: 0; z-index: 1000;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(15,23,42,0.3);
+    backdrop-filter: blur(4px);
+    padding: 16px;
+  }
+
+  .dc-popup {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.1);
+    padding: 36px 32px;
+    max-width: 360px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    animation: dc-zoom 0.22s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  .dc-field-wrap { display: flex; flex-direction: column; gap: 4px; position: relative; overflow: visible !important; }
+
+  @keyframes dc-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+  @keyframes dc-zoom { from{opacity:0;transform:scale(0.88)} to{opacity:1;transform:scale(1)} }
+`;
+
 export default function SSSSubmitModify() {
-  // ─── UI State ────────────────────────────────────────────────────────────────
   const [isFilterOpen, setIsFilterOpen] = useState(true);
   const [tableVisible, setTableVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [successMsg, setSuccessMsg] = useState("");
+  const [popup, setPopup] = useState({ isOpen: false, message: "" });
 
-  // ─── Filter State ────────────────────────────────────────────────────────────
   const [filters, setFilters] = useState({
     stateId: "",
     districtId: "",
@@ -93,23 +279,16 @@ export default function SSSSubmitModify() {
     year: String(CURRENT_YEAR)
   });
 
-  // ─── Master Data (Dropdowns) ─────────────────────────────────────────────────
   const [states, setStates] = useState([]);
   const [districts, setDistricts] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [stockists, setStockists] = useState([]);
-
-  // ─── Table Data State ────────────────────────────────────────────────────────
   const [products, setProducts] = useState([]);
 
-  // ─── Helper for Auth Headers ─────────────────────────────────────────────────
   const getAuthHeaders = useCallback(() => ({
     headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` }
   }), []);
 
-  // ─── Data Fetching (Cascading Dropdowns with Normalization) ──────────────────
-  
-  // 1. Fetch States on Mount
   useEffect(() => {
     const fetchStates = async () => {
       try {
@@ -125,7 +304,6 @@ export default function SSSSubmitModify() {
     fetchStates();
   }, [getAuthHeaders]);
 
-  // 2. Fetch Districts when State changes
   useEffect(() => {
     setFilters(prev => ({ ...prev, districtId: "", employeeId: "", stockistId: "" }));
     setDistricts([]); setEmployees([]); setStockists([]);
@@ -147,7 +325,6 @@ export default function SSSSubmitModify() {
     }
   }, [filters.stateId, getAuthHeaders]);
 
-  // 3. Fetch Employees when District changes
   useEffect(() => {
     setFilters(prev => ({ ...prev, employeeId: "", stockistId: "" }));
     setEmployees([]); setStockists([]);
@@ -169,7 +346,6 @@ export default function SSSSubmitModify() {
     }
   }, [filters.stateId, filters.districtId, getAuthHeaders]);
 
-  // 4. Fetch Stockists when Employee changes
   useEffect(() => {
     setFilters(prev => ({ ...prev, stockistId: "" }));
     setStockists([]);
@@ -198,8 +374,6 @@ export default function SSSSubmitModify() {
     }
   }, [filters.employeeId, filters.stateId, filters.districtId, getAuthHeaders]);
 
-  // ─── Handlers ────────────────────────────────────────────────────────────────
-
   const handleFilterChange = (field, value) => {
     setFilters(prev => ({ ...prev, [field]: value }));
     setTableVisible(false); 
@@ -207,7 +381,6 @@ export default function SSSSubmitModify() {
 
   const handleFilterSubmit = async () => {
     setError("");
-    setSuccessMsg("");
 
     if (!filters.stateId || !filters.districtId || !filters.employeeId || !filters.stockistId || !filters.month || !filters.year) {
       return setError("Please select all filter fields before submitting.");
@@ -252,7 +425,6 @@ export default function SSSSubmitModify() {
   };
 
   const handleTableChange = (index, field, value) => {
-    // Allow only numbers and decimals
     if (value === "" || /^\d*\.?\d*$/.test(value)) {
       const updatedProducts = [...products];
       updatedProducts[index][field] = value;
@@ -263,7 +435,6 @@ export default function SSSSubmitModify() {
   const handleFinalSubmit = async () => {
     setIsSubmitting(true);
     setError("");
-    setSuccessMsg("");
 
     try {
       const monthNum = monthToNumber[filters.month];
@@ -290,12 +461,9 @@ export default function SSSSubmitModify() {
 
       await api.post("/api/expense/sss", payload, getAuthHeaders());
 
-      setSuccessMsg("Stock-Sales & Statement submitted successfully!");
-      setTimeout(() => {
-        setSuccessMsg("");
-        setTableVisible(false);
-        setProducts([]);
-      }, 4000);
+      setPopup({ isOpen: true, message: "Stock-Sales & Statement submitted successfully!" });
+      setTableVisible(false);
+      setProducts([]);
 
     } catch (err) {
       setError(err.response?.data?.message || "Failed to submit statement.");
@@ -304,7 +472,6 @@ export default function SSSSubmitModify() {
     }
   };
 
-  // ─── Robust Dropdown Options Mapping ─────────────────────────────────────────
   const stateOpts = states.map(s => ({ value: String(s.id), label: s.stateName })).filter(opt => opt.value !== "");
   const distOpts = districts.map(d => ({ value: String(d.id), label: d.districtName })).filter(opt => opt.value !== "");
   const empOpts = employees.map(e => ({ value: String(e.id), label: e.employeeName })).filter(opt => opt.value !== "");
@@ -313,66 +480,59 @@ export default function SSSSubmitModify() {
     label: s.type ? `${s.stockistName} (${s.type})` : s.stockistName
   })).filter((opt) => opt.value !== "");
 
-  // ─── Render ──────────────────────────────────────────────────────────────────
   return (
-    <div className="ucr-wrap">
+    <div className="dc-wrap">
       <style>{STYLES}</style>
 
-      {/* Alerts */}
       {error && (
-        <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 12, padding: "10px 16px", color: "#dc2626", fontSize: 13, fontWeight: 600, marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
-          <AlertCircle size={16} /> {error}
-        </div>
-      )}
-      {successMsg && (
-        <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 12, padding: "10px 16px", color: "#16a34a", fontSize: 13, fontWeight: 600, marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
-          <CheckCircle2 size={16} /> {successMsg}
+        <div className="dc-error-banner">
+          <AlertCircle size={15} style={{ flexShrink: 0 }} />
+          {error}
         </div>
       )}
 
       {/* Filter Card */}
-      <div className="ucr-card">
-        <div className="ucr-header">
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: "#eff6ff", border: "1px solid #dbeafe", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <FileSpreadsheet size={17} style={{ color: "#2563eb" }} />
+      <div className="dc-card">
+        <div className="dc-header">
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div className="dc-page-icon">
+              <FileSpreadsheet size={16} color="#fff" />
+            </div>
+            <div>
+              <h2 className="ucr-brand" style={{ fontSize: 16, fontWeight: 700, color: "#1e293b", letterSpacing: "-0.01em", lineHeight: 1.2 }}>Stock-Sales & Statement Filter</h2>
+              <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>Submit or modify monthly stock and sales records</p>
+            </div>
           </div>
-          <div style={{ flex: 1 }}>
-            <h2 style={{ fontSize: 15, fontWeight: 700, color: "#111827", margin: 0 }}>Stock-Sales & Statement Filter</h2>
-            <p style={{ fontSize: 11, color: "#6b7280", margin: 0, marginTop: 2 }}>Submit or modify monthly stock and sales records</p>
-          </div>
-          <button onClick={() => setIsFilterOpen(!isFilterOpen)} style={{ background: "none", border: "none", cursor: "pointer" }}>
+          <button type="button" onClick={() => setIsFilterOpen(!isFilterOpen)} style={{ background: "none", border: "none", cursor: "pointer" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: "#6b7280" }}>FILTER</span>
-              <div style={{ width: 34, height: 18, borderRadius: 20, background: isFilterOpen ? "#2563eb" : "#d1d5db", position: "relative", cursor: "pointer", transition: "0.2s" }}>
-                <div style={{ width: 14, height: 14, borderRadius: "50%", background: "#fff", position: "absolute", top: 2, left: isFilterOpen ? 18 : 2, transition: "0.2s" }} />
+              <span className="ucr-brand" style={{ fontSize: 13, fontWeight: 600, color: "#475569" }}>Filter</span>
+              <div style={{ width: 40, height: 20, borderRadius: 100, position: "relative", cursor: "pointer", transition: "0.2s", background: isFilterOpen ? "#3B82F6" : "#cbd5e1" }}>
+                <div style={{ width: 14, height: 14, background: "#fff", borderRadius: "50%", position: "absolute", top: 3, left: isFilterOpen ? 23 : 3, transition: "0.2s" }} />
               </div>
             </div>
           </button>
         </div>
 
         {isFilterOpen && (
-          <div className="ucr-body">
+          <div className="dc-body">
+            <div className="ucr-grid-4" style={{ marginBottom: 16 }}>
+              <FloatingDropdown label="Select State" options={stateOpts} value={filters.stateId} onSelect={(v) => handleFilterChange("stateId", v)} />
+              <FloatingDropdown label="Select District" options={distOpts} value={filters.districtId} onSelect={(v) => handleFilterChange("districtId", v)} disabled={!filters.stateId} />
+              <FloatingDropdown label="Select Employee" options={empOpts} value={filters.employeeId} onSelect={(v) => handleFilterChange("employeeId", v)} disabled={!filters.districtId} />
+              <FloatingDropdown label="Select Stockist" options={stockOpts} value={filters.stockistId} onSelect={(v) => handleFilterChange("stockistId", v)} disabled={!filters.employeeId} />
+            </div>
             <div className="ucr-grid-4">
-              <FloatingDropdown label="SELECT STATE *" options={stateOpts} value={filters.stateId} onSelect={(v) => handleFilterChange("stateId", v)} />
-              <FloatingDropdown label="SELECT DISTRICT *" options={distOpts} value={filters.districtId} onSelect={(v) => handleFilterChange("districtId", v)} disabled={!filters.stateId} />
-              <FloatingDropdown label="SELECT EMPLOYEE *" options={empOpts} value={filters.employeeId} onSelect={(v) => handleFilterChange("employeeId", v)} disabled={!filters.districtId} />
-              <FloatingDropdown label="SELECT STOCKIST *" options={stockOpts} value={filters.stockistId} onSelect={(v) => handleFilterChange("stockistId", v)} disabled={!filters.employeeId} />
-              
-              <FloatingDropdown label="SELECT MONTH *" options={MONTHS} value={filters.month} onSelect={(v) => handleFilterChange("month", v)} />
-              <FloatingDropdown label="SELECT YEAR *" options={YEARS} value={filters.year} onSelect={(v) => handleFilterChange("year", v)} />
-              
+              <FloatingDropdown label="Select Month" options={MONTHS} value={filters.month} onSelect={(v) => handleFilterChange("month", v)} />
+              <FloatingDropdown label="Select Year" options={YEARS} value={filters.year} onSelect={(v) => handleFilterChange("year", v)} />
               <div className="col-span-2" style={{ display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
                 <button
                   type="button"
                   onClick={handleFilterSubmit}
                   disabled={isLoading}
-                  style={{
-                    height: 40, padding: "0 24px", borderRadius: 8, background: "#2563eb", color: "#fff", width: "100%", maxWidth: 200,
-                    fontSize: 13, fontWeight: 700, border: "none", cursor: isLoading ? "not-allowed" : "pointer",
-                    opacity: isLoading ? 0.6 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8
-                  }}
+                  className="dc-submit-btn"
+                  style={{ width: "100%", maxWidth: 200, justifyContent: "center" }}
                 >
-                  {isLoading ? <Loader2 size={16} style={{ animation: "ucr-spin 1s linear infinite" }} /> : <Check size={16} />}
+                  {isLoading ? <Loader2 size={14} style={{ animation: "dc-spin 1s linear infinite" }} /> : <Check size={14} />}
                   Submit SSS
                 </button>
               </div>
@@ -383,12 +543,12 @@ export default function SSSSubmitModify() {
 
       {/* Table Section */}
       {tableVisible && (
-        <div className="ucr-card">
-          <div className="ucr-header" style={{ justifyContent: "space-between", background: "#f9fafb" }}>
-            <h3 style={{ fontSize: 14, fontWeight: 700, color: "#374151", margin: 0 }}>Stock-Sales & Statement</h3>
+        <div className="dc-card">
+          <div className="dc-header" style={{ background: "#f8fafc" }}>
+            <h1 className="ucr-brand" style={{ fontSize: 14, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.04em" }}>Stock-Sales & Statement</h1>
           </div>
 
-          <div className="ucr-body" style={{ padding: 0 }}>
+          <div className="dc-body" style={{ padding: 0 }}>
             <div className="ucr-table-container" style={{ border: "none", borderRadius: "0 0 16px 16px" }}>
               <table className="ucr-table">
                 <thead>
@@ -406,16 +566,16 @@ export default function SSSSubmitModify() {
                 <tbody>
                   {products.length === 0 ? (
                     <tr>
-                      <td colSpan={8} style={{ textAlign: "center", padding: 40, color: "#9ca3af" }}>
+                      <td colSpan={8} style={{ textAlign: "center", padding: 40, color: "#94a3b8", fontStyle: "italic" }}>
                         No products found for this selection.
                       </td>
                     </tr>
                   ) : (
                     products.map((row, index) => (
                       <tr key={row.id || index}>
-                        <td style={{ color: "#6b7280", textAlign: "center" }}>{index + 1}</td>
-                        <td style={{ fontWeight: 600 }}>{row.productName || "—"}</td>
-                        <td style={{ textAlign: "right", fontWeight: 700 }}>₹{Number(row.netRate).toFixed(2) || 0}</td>
+                        <td style={{ color: "#64748b", textAlign: "center" }}>{index + 1}</td>
+                        <td style={{ fontWeight: 600, color: "#1e293b" }}>{row.productName || "—"}</td>
+                        <td style={{ textAlign: "right", fontWeight: 700, color: "#1e293b" }}>₹{Number(row.netRate).toFixed(2) || 0}</td>
                         <td style={{ padding: "8px 16px" }}>
                           <TableInput value={row.opening} onChange={(val) => handleTableChange(index, "opening", val)} />
                         </td>
@@ -439,19 +599,41 @@ export default function SSSSubmitModify() {
             </div>
           </div>
 
-          <div className="ucr-footer" style={{ justifyContent: "flex-start" }}>
+          <div className="dc-footer">
             <button
               type="button"
               onClick={handleFinalSubmit}
               disabled={isSubmitting || products.length === 0}
-              style={{
-                height: 40, padding: "0 24px", borderRadius: 8, background: "#2563eb", color: "#fff",
-                fontSize: 13, fontWeight: 700, border: "none", cursor: (isSubmitting || products.length === 0) ? "not-allowed" : "pointer",
-                opacity: (isSubmitting || products.length === 0) ? 0.6 : 1, display: "flex", alignItems: "center", gap: 8
-              }}
+              className="dc-submit-btn"
             >
-              {isSubmitting ? <Loader2 size={16} style={{ animation: "ucr-spin 1s linear infinite" }} /> : <Save size={16} />}
+              {isSubmitting ? <Loader2 size={14} style={{ animation: "dc-spin 1s linear infinite" }} /> : <Save size={14} />}
               Submit Data
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Success Popup ── */}
+      {popup.isOpen && (
+        <div className="dc-overlay">
+          <div className="dc-popup">
+            <div style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(59,130,246,0.06)", border: "1px solid rgba(59,130,246,0.25)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
+              <Check size={28} style={{ color: "#3B82F6", strokeWidth: 2.5 }} />
+            </div>
+            <h3 className="ucr-brand" style={{ fontSize: 17, fontWeight: 700, color: "#1e293b", textAlign: "center", margin: "0 0 8px", letterSpacing: "-0.01em" }}>Success</h3>
+            <p style={{ fontSize: 13, color: "#94a3b8", textAlign: "center", margin: "0 0 24px" }}>{popup.message}</p>
+            <button
+              type="button"
+              onClick={() => setPopup({ isOpen: false, message: "" })}
+              style={{
+                background: "linear-gradient(135deg, #3B82F6, #2563eb)", color: "#fff", border: "none", borderRadius: 8,
+                padding: "10px 0", width: "100%", fontSize: 13.5, fontWeight: 600, cursor: "pointer",
+                fontFamily: "'Plus Jakarta Sans', sans-serif", boxShadow: "0 4px 14px rgba(59,130,246,0.2)", transition: "all 0.15s"
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 6px 20px rgba(59,130,246,0.3)"; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 14px rgba(59,130,246,0.2)"; }}
+            >
+              Continue
             </button>
           </div>
         </div>
@@ -459,10 +641,6 @@ export default function SSSSubmitModify() {
     </div>
   );
 }
-
-// ═══════════════════════════════════════════════════════════════════
-// UI Components Restyled to match Reference Exactly
-// ═══════════════════════════════════════════════════════════════════
 
 function TableInput({ value, onChange }) {
   const [isFocused, setIsFocused] = useState(false);
@@ -475,20 +653,28 @@ function TableInput({ value, onChange }) {
       onFocus={() => setIsFocused(true)}
       onBlur={() => setIsFocused(false)}
       style={{
-        width: "100%", height: 34, textAlign: "center", border: `1.5px solid ${isFocused ? "#2563eb" : "#d1d5db"}`,
-        borderRadius: 6, fontSize: 13, fontWeight: 600, color: "#111827", outline: "none",
-        background: "#fff", transition: "0.2s"
+        width: "100%", height: 34, textAlign: "center", border: `1.5px solid ${isFocused ? "#3B82F6" : "#e2e8f0"}`,
+        borderRadius: 6, fontSize: 13, fontWeight: 600, color: "#1e293b", outline: "none",
+        background: "#fff", transition: "all 0.15s",
+        boxShadow: isFocused ? "0 0 0 3px rgba(59,130,246,0.12)" : "none"
       }}
     />
   );
 }
 
+// ─── Searchable Portal Configuration Dropdown Component ───
 function FloatingDropdown({ label, options, value, onSelect, disabled }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
   const ref = useRef(null);
 
   const selectedOption = options.find((option) => String(option.value) === String(value));
-  const active = isOpen || Boolean(value);
+  const hasVal = Boolean(value);
+  const active = isOpen || hasVal;
+  const borderColor = isOpen ? "#3B82F6" : hasVal ? "#bfdbfe" : "#e2e8f0";
+  const bgColor = disabled ? "#f8fafc" : isOpen ? "#eff6ff" : "#ffffff";
+  const shadow  = isOpen && !disabled ? "0 0 0 3px rgba(59,130,246,0.15)" : "none";
+  const labelColor = isOpen ? "#3B82F6" : hasVal ? "#64748b" : "#94a3b8";
 
   useEffect(() => {
     const handleOutsideClick = (e) => {
@@ -498,60 +684,72 @@ function FloatingDropdown({ label, options, value, onSelect, disabled }) {
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
 
+  const handleTriggerClick = () => {
+    if (disabled) return;
+    if (!isOpen && ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      setCoords({
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX,
+        width: rect.width,
+      });
+    }
+    setIsOpen(!isOpen);
+  };
+
   return (
-    <div ref={ref} style={{ position: "relative", width: "100%" }}>
+    <div ref={ref} style={{ position: "relative", width: "100%", userSelect: "none" }} className="dc-field-wrap">
       <div
-        onClick={() => !disabled && setIsOpen(!isOpen)}
+        onClick={handleTriggerClick}
         style={{
-          width: "100%", height: FH, borderRadius: 8, padding: "0 12px", fontSize: 13, display: "flex",
-          alignItems: "center", border: `1.5px solid ${active && !disabled ? "#2563eb" : "#d1d5db"}`,
-          cursor: disabled ? "not-allowed" : "pointer", background: disabled ? "#f3f4f6" : "#fff",
-          transition: "border-color 0.2s"
+          width: "100%", height: FH, borderRadius: 8, padding: "0 36px 0 12px", fontSize: 13, display: "flex",
+          alignItems: "center", border: `1.5px solid ${disabled ? "#f1f5f9" : borderColor}`, cursor: disabled ? "not-allowed" : "pointer",
+          background: bgColor + " !important", boxShadow: disabled ? "none" : shadow, transition: "all 0.18s", boxSizing: "border-box"
         }}
       >
-        <span style={{ flex: 1, fontWeight: 600, color: (Boolean(value) && !disabled) ? "#111827" : disabled && Boolean(value) ? "#6b7280" : "transparent", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginRight: 8 }}>
+        <span style={{ flex: 1, fontWeight: 500, color: value ? "#1e293b" : "transparent", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontSize: 14 }}>
           {selectedOption?.label || " "}
         </span>
-        <ChevronDown size={14} style={{ color: "#9ca3af", transform: isOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "0.2s", flexShrink: 0 }} />
+        <div style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: isOpen ? "#3B82F6" : "#94a3b8", display: "flex", alignItems: "center" }}>
+          <ChevronDown size={15} style={{ transform: isOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }} />
+        </div>
       </div>
       <label
         style={{
-          position: "absolute", left: 10, top: active ? -9 : 12, fontSize: active ? 10 : 12,
-          fontWeight: 600, color: disabled ? "#9ca3af" : (active ? "#2563eb" : "#9ca3af"), background: disabled ? (active ? "#f3f4f6" : "transparent") : "#fff",
-          padding: "0 4px", transition: "0.2s", pointerEvents: "none",
-          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "calc(100% - 20px)"
+          position: "absolute", left: 10, top: active ? 0 : "50%", transform: "translateY(-50%)", fontSize: active ? 11 : 13,
+          fontWeight: 500, color: disabled ? "#cbd5e1" : labelColor, background: active ? "#ffffff" : "transparent",
+          padding: active ? "0 5px" : "0", transition: "all 0.12s ease-out", pointerEvents: "none", zIndex: 20
         }}
       >
         {label}
       </label>
 
-      {isOpen && !disabled && (
-        <div
-          style={{
-            position: "absolute", top: "110%", left: 0, width: "100%", background: "#fff",
-            border: "1px solid #e5e7eb", borderRadius: 8, boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)", zIndex: 100, overflow: "hidden"
-          }}
-        >
-          <div style={{ maxHeight: 200, overflowY: "auto", padding: "4px 0" }}>
+      {isOpen && !disabled && createPortal(
+        <div className="dc-portal-dropdown" style={{ position: "absolute", top: coords.top + 4, left: coords.left, width: coords.width }}>
+          <ul style={{ maxHeight: 200, overflowY: "auto", margin: 0, padding: "4px 0", listStyle: "none", background: "#ffffff" }}>
             {options.length === 0 ? (
-              <p style={{ padding: "12px 16px", fontSize: 13, color: "#9ca3af", margin: 0, textAlign: "center", fontStyle: "italic" }}>No options available</p>
+              <li style={{ padding: "12px 16px", fontSize: 12, color: "#94a3b8", fontStyle: "italic", textAlign: "center" }}>No options available</li>
             ) : (
               options.map((opt) => (
-                <div
+                <li
                   key={opt.value}
-                  onClick={() => { onSelect(opt.value); setIsOpen(false); }}
+                  className={`dc-opt${String(value) === String(opt.value) ? " selected" : ""}`}
                   style={{
-                    padding: "10px 12px", fontSize: 13, cursor: "pointer", fontWeight: 600,
-                    background: String(value) === String(opt.value) ? "#eff6ff" : "transparent",
-                    color: String(value) === String(opt.value) ? "#2563eb" : "#374151"
+                    padding: "10px 14px", fontSize: "13.5px", borderRadius: "8px", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px",
+                    color: String(value) === String(opt.value) ? "#2563eb" : "#475569",
+                    backgroundColor: String(value) === String(opt.value) ? "rgba(59,130,246,0.08)" : "#ffffff",
+                    fontWeight: String(value) === String(opt.value) ? "600" : "500"
                   }}
+                  onMouseDown={() => { onSelect(opt.value); setIsOpen(false); }}
                 >
+                  {String(value) === String(opt.value) && <Check size={12} style={{ color: "#3B82F6", flexShrink: 0 }} />}
                   {opt.label}
-                </div>
+                </li>
               ))
             )}
-          </div>
-        </div>
+          </ul>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -1,8 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { createPortal } from "react-dom";
 import {
   AlertCircle,
   Briefcase,
-  CheckCircle2,
   ChevronDown,
   Edit2,
   Loader2,
@@ -11,52 +11,249 @@ import {
   Search,
   Trash2,
   X,
+  Check
 } from "lucide-react";
 import api from "../../../services/api";
 
-// ─── Global responsive styles (from reference) ───────────────────────────────
+/* ─── Premium UI Styles & Utilities ──────────────────────────────────────── */
 const STYLES = `
-  *, *::before, *::after { box-sizing: border-box; }
-  .ucr-wrap  { width:100%; padding-bottom:48px; font-family:Inter,sans-serif; overflow-x: hidden; }
-  .ucr-card  { background:#fff; border-radius:16px; box-shadow:0 1px 4px rgba(0,0,0,0.07); border:1px solid #f3f4f6; overflow:visible; margin-bottom: 24px; }
-  .ucr-header{ padding:16px 20px; border-bottom:1px solid #f3f4f6; display:flex; align-items:center; gap:12px; }
-  .ucr-body  { padding:24px; }
-  .ucr-footer{ padding:14px 24px; background:#f9fafb; border-top:1px solid #f3f4f6; display:flex; align-items:center; justify-content:flex-end; border-radius:0 0 16px 16px; flex-wrap: wrap; gap: 12px; }
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght=500;600;700;800&family=Inter:wght=400;500;600;700&display=swap');
 
-  /* Responsive Table Scroll Logic */
-  .ucr-table-container {
-    border: 1px solid #f3f4f6;
-    border-radius: 12px;
-    overflow-x: auto;
-    background: #fff;
-    -webkit-overflow-scrolling: touch;
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  .dc-wrap {
+    font-family: 'Inter', sans-serif;
+    width: 100%;
   }
-  .ucr-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 1200px; }
-  .ucr-table thead { background: #f9fafb; border-bottom: 1px solid #f3f4f6; }
-  .ucr-table th { padding: 12px 16px; text-align: left; font-weight: 700; color: #6b7280; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
-  .ucr-table td { padding: 12px 16px; color: #374151; border-bottom: 1px solid #f3f4f6; }
 
-  .ucr-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:20px; margin-bottom:24px; }
-  .ucr-grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:20px; margin-bottom:24px; }
+  .ucr-brand { font-family: 'Plus Jakarta Sans', sans-serif; }
 
-  /* Responsive Col Spans */
+  /* ── Single Unified Card Container ── */
+  .dc-card {
+    background: #ffffff !important;
+    border: 1px solid #edf2f7;
+    border-radius: 16px;
+    isolation: isolate;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+    position: relative;
+    overflow: visible !important;
+    margin-bottom: 24px;
+  }
+
+  /* ── Card Header ── */
+  .dc-header {
+    padding: 24px 28px 16px;
+    background: #ffffff !important;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+    border-radius: 16px 16px 0 0 !important;
+    overflow: visible !important;
+  }
+
+  .dc-page-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #3B82F6, #2563eb);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 3px 8px rgba(59,130,246,0.2);
+    flex-shrink: 0;
+  }
+
+  /* ── Form Body ── */
+  .dc-body { 
+    padding: 20px 28px 24px; 
+    background: #ffffff !important; 
+    border-bottom-left-radius: 16px; 
+    border-bottom-right-radius: 16px;
+    overflow: visible !important;
+  }
+
+  /* ── Form Footer ── */
+  .dc-footer {
+    padding: 20px 28px 24px;
+    background: #ffffff !important;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    border-radius: 16px;
+    border-top: 1px solid #f1f5f9;
+  }
+
+  /* ── Responsive Input Grids ── */
+  .ucr-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-bottom: 24px; }
+  .ucr-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-bottom: 16px; }
+
   .col-span-2 { grid-column: span 2; }
   .col-span-4 { grid-column: span 4; }
 
-  @media(max-width:1024px){
-    .ucr-grid, .ucr-grid-4 { grid-template-columns:repeat(2,1fr); gap:16px; }
+  @media(max-width: 1200px) {
+    .ucr-grid, .ucr-grid-4 { grid-template-columns: repeat(3, 1fr); }
+    .col-span-4 { grid-column: span 3; }
+  }
+  @media(max-width: 1024px) {
+    .ucr-grid, .ucr-grid-4 { grid-template-columns: repeat(2, 1fr); gap: 18px; }
     .col-span-4 { grid-column: span 2; }
   }
-  @media(max-width:768px){
-    .ucr-grid, .ucr-grid-4 { grid-template-columns:1fr; gap:16px; }
+  @media(max-width: 640px) {
+    .ucr-grid, .ucr-grid-4 { grid-template-columns: 1fr; gap: 20px; }
     .col-span-2, .col-span-4 { grid-column: span 1 !important; }
-    .ucr-body  { padding:16px; }
-    .ucr-header { padding: 16px; flex-direction: column; align-items: flex-start; }
-    .ucr-header > div { width: 100%; }
-    .modal-close-btn { align-self: flex-end; margin-top: -30px; }
-    .ucr-footer { justify-content: center; }
+    .dc-body { padding: 20px 16px; }
+    .dc-header { padding: 20px 16px 12px; }
+    .dc-footer { padding: 16px; }
+    .dc-submit-btn, .dc-delete-footer-btn { width: auto !important; }
   }
-  @keyframes ucr-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+
+  /* ── Portal Dropdown Layer ── */
+  .dc-portal-dropdown {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12), 0 4px 12px rgba(15, 23, 42, 0.04);
+    z-index: 9999999 !important;
+    overflow: hidden;
+  }
+
+  .dc-portal-dropdown ul {
+    background: #ffffff !important;
+    max-height: 220px;
+    overflow-y: auto;
+    padding: 6px;
+    margin: 0;
+    list-style: none;
+    scrollbar-width: thin;
+    scrollbar-color: #e2e8f0 transparent;
+  }
+
+  /* ── Premium Table Container with Clean Spacing ── */
+  .ucr-table-container {
+    border: 1px solid #edf2f7;
+    border-radius: 12px;
+    overflow-x: auto;
+    background: #ffffff !important;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.01);
+    margin-bottom: 16px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .ucr-table { width: 100%; border-collapse: collapse; font-size: 13.5px; text-align: left; min-width: 1200px; }
+  .ucr-table thead tr { position: sticky; top: 0; z-index: 10; }
+  .ucr-table thead { background: #f8fafc; }
+  
+  /* Compact Vertical Height Spacing */
+  .ucr-table th { 
+    padding: 12px 16px; 
+    font-size: 11px; 
+    font-weight: 600; 
+    text-transform: uppercase; 
+    letter-spacing: 0.05em; 
+    color: #64748b;
+    border-bottom: 1px solid #edf2f7; 
+    white-space: nowrap;
+  }
+  .ucr-table td { 
+    padding: 11px 16px; 
+    color: #475569; 
+    border-bottom: 1px solid #f8fafc; 
+    font-weight: 500; 
+    white-space: nowrap; 
+  }
+  .ucr-table tbody tr:last-child td { border-bottom: none; }
+  .ucr-table tbody tr:hover { background: #f8fafc; }
+
+  /* ── System Error Banner ── */
+  .dc-error-banner {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 12px;
+    padding: 12px 16px;
+    color: #dc2626;
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  /* ── Action Buttons ── */
+  .dc-submit-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    background: #2563eb !important;
+    color: #fff !important;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+    transition: all 0.2s;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    letter-spacing: 0.01em;
+    height: 40px;
+  }
+  .dc-submit-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.45);
+    background: #1d4ed8 !important;
+  }
+  .dc-submit-btn:disabled { background: #93c5fd !important; color: #ffffff !important; cursor: not-allowed; box-shadow: none; opacity: 0.8 !important; }
+
+  .dc-delete-footer-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    border: 1px solid #fecaca;
+    background: #ffffff !important;
+    color: #dc2626;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    height: 40px;
+  }
+  .dc-delete-footer-btn:hover:not(:disabled) {
+    background: #fef2f2 !important;
+    border-color: #fca5a5;
+  }
+  .dc-delete-footer-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .dc-overlay {
+    position: fixed; inset: 0; z-index: 1000;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(15,23,42,0.3);
+    backdrop-filter: blur(4px);
+    padding: 16px;
+  }
+
+  .dc-popup {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.1);
+    padding: 36px 32px;
+    max-width: 360px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    animation: dc-zoom 0.22s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  .dc-field-wrap { display: flex; flex-direction: column; gap: 4px; position: relative; overflow: visible !important; }
+
+  @keyframes dc-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+  @keyframes dc-zoom { from{opacity:0;transform:scale(0.88)} to{opacity:1;transform:scale(1)} }
 `;
 
 const FH = 40;
@@ -144,7 +341,7 @@ export default function FareRateCard() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [error, setError] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
+  const [popup, setPopup] = useState({ isOpen: false, message: "" });
 
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -153,7 +350,6 @@ export default function FareRateCard() {
 
   const clearNotifications = () => {
     setError("");
-    setSuccessMessage("");
   };
 
   const fetchDesignations = useCallback(async () => {
@@ -166,7 +362,7 @@ export default function FareRateCard() {
             .filter((item) => item.id && item.name)
         : [];
       setDesignations(normalized);
-    } catch {
+    } catch (error) {
       try {
         const fallbackResponse = await api.get("/api/masters/designations");
         const fallbackPayload =
@@ -177,7 +373,7 @@ export default function FareRateCard() {
               .filter((item) => item.id && item.name)
           : [];
         setDesignations(normalizedFallback);
-      } catch {
+      } catch (err) {
         setError("Failed to load designation list.");
       }
     }
@@ -324,7 +520,7 @@ export default function FareRateCard() {
 
       await api.post("/api/expense/frc", payload);
 
-      setSuccessMessage("Fare Rate Card created successfully.");
+      setPopup({ isOpen: true, message: "Fare Rate Card created successfully." });
       setRules([createEmptyRule()]);
       setSelectedDesignationIds([]);
       setShowTable(true);
@@ -392,7 +588,7 @@ export default function FareRateCard() {
 
       await api.put(`/api/expense/frc/${editingRecord.id}`, payload);
 
-      setSuccessMessage("Fare Rate Card updated successfully.");
+      setPopup({ isOpen: true, message: "Fare Rate Card updated successfully." });
       setIsEditModalOpen(false);
       setEditingRecord(null);
       await fetchFrcRecords({ revealTable: true });
@@ -419,7 +615,7 @@ export default function FareRateCard() {
 
     try {
       await api.delete(`/api/expense/frc/${record.id}`);
-      setSuccessMessage("Fare Rate Card deleted successfully.");
+      setPopup({ isOpen: true, message: "Fare Rate Card deleted successfully." });
       await fetchFrcRecords({ revealTable: true });
     } catch (error) {
       setError(getErrorMessage(error, "Failed to delete Fare Rate Card."));
@@ -450,51 +646,44 @@ export default function FareRateCard() {
   }, [records, searchQuery]);
 
   return (
-    <div className="ucr-wrap">
+    <div className="dc-wrap">
       <style>{STYLES}</style>
 
-      {/* Alerts */}
       {error && (
-        <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 12, padding: "10px 16px", color: "#dc2626", fontSize: 13, fontWeight: 600, marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
-          <AlertCircle size={16} /> {error}
-        </div>
-      )}
-      {successMessage && (
-        <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 12, padding: "10px 16px", color: "#16a34a", fontSize: 13, fontWeight: 600, marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
-          <CheckCircle2 size={16} /> {successMessage}
+        <div className="dc-error-banner">
+          <AlertCircle size={15} style={{ flexShrink: 0 }} />
+          {error}
         </div>
       )}
 
       {/* Main Creation Card */}
-      <div className="ucr-card">
-        <div className="ucr-header">
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: "#eff6ff", border: "1px solid #dbeafe", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Briefcase size={17} style={{ color: "#2563eb" }} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <h2 style={{ fontSize: 15, fontWeight: 700, color: "#111827", margin: 0 }}>Fare Rate Card Designation</h2>
-            <p style={{ fontSize: 11, color: "#6b7280", margin: 0, marginTop: 2 }}>
-              Create multiple fare slabs and map them to one or more designations
-            </p>
+      <div className="dc-card">
+        <div className="dc-header">
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div className="dc-page-icon">
+              <Briefcase size={16} color="#fff" />
+            </div>
+            <div>
+              <h1 className="ucr-brand" style={{ fontSize: 16, fontWeight: 700, color: "#1e293b", letterSpacing: "-0.01em", lineHeight: 1.2 }}>Fare Rate Card Designation</h1>
+              <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>Create multiple fare slabs and map them to one or more designations</p>
+            </div>
           </div>
         </div>
 
-        <div className="ucr-body">
+        <div className="dc-body">
           <div className="ucr-grid" style={{ marginBottom: 32 }}>
-            <div style={{ position: "relative", zIndex: 50 }}>
-              <MultiSelectDropdown
-                label="SELECT DESIGNATION *"
-                options={designations.map((designation) => ({
-                  value: designation.id,
-                  label: designation.name,
-                }))}
-                selectedValues={selectedDesignationIds}
-                onChange={setSelectedDesignationIds}
-                disabled={isLoadingInitial}
-              />
-            </div>
+            <MultiSelectDropdown
+              label="Select Designation"
+              options={designations.map((designation) => ({
+                value: designation.id,
+                label: designation.name,
+              }))}
+              selectedValues={selectedDesignationIds}
+              onChange={setSelectedDesignationIds}
+              disabled={isLoadingInitial}
+            />
             <div className="col-span-2" style={{ display: "flex", alignItems: "center" }}>
-              <p style={{ fontSize: 12, fontWeight: 600, color: "#6b7280", margin: 0 }}>
+              <p style={{ fontSize: 12, fontWeight: 600, color: "#64748b", margin: 0 }}>
                 Selected: {selectedDesignationNames.length > 0 ? selectedDesignationNames.join(", ") : "None"}
               </p>
             </div>
@@ -505,16 +694,17 @@ export default function FareRateCard() {
               <div
                 key={rule.localId}
                 style={{
-                  background: "#f9fafb",
-                  border: "1px solid #f3f4f6",
+                  background: "#f8fafc",
+                  border: "1px solid #edf2f7",
                   borderRadius: 12,
                   padding: "24px 20px 20px 20px",
                   position: "relative",
+                  overflow: "visible"
                 }}
               >
-                <div style={{
-                  position: "absolute", top: -10, left: 16, background: "#fff", border: "1px solid #f3f4f6",
-                  padding: "2px 10px", borderRadius: 20, fontSize: 10, fontWeight: 700, color: "#2563eb", textTransform: "uppercase"
+                <div className="ucr-brand" style={{
+                  position: "absolute", top: -10, left: 16, background: "#fff", border: "1px solid #edf2f7",
+                  padding: "2px 10px", borderRadius: 100, fontSize: 10, fontWeight: 700, color: "#2563eb", textTransform: "uppercase", letterSpacing: "0.02em"
                 }}>
                   Fare Rate Designation #{index + 1}
                 </div>
@@ -525,7 +715,7 @@ export default function FareRateCard() {
                     onClick={() => removeRule(rule.localId)}
                     style={{
                       position: "absolute", right: 12, top: 12, width: 30, height: 30, borderRadius: 8,
-                      border: "1px solid #fecaca", background: "#fff", color: "#dc2626", cursor: "pointer",
+                      border: "1px solid #fca5a5", background: "#fff", color: "#dc2626", cursor: "pointer",
                       display: "flex", alignItems: "center", justifyContent: "center"
                     }}
                     title="Delete this card"
@@ -534,51 +724,52 @@ export default function FareRateCard() {
                   </button>
                 )}
 
+                {/* Unified Continuous Row Layout Grid */}
                 <div className="ucr-grid-4" style={{ marginBottom: 0, marginTop: rules.length > 1 ? 8 : 0 }}>
                   <FloatingInput
-                    label="FROM DISTANCE (KM) *"
+                    label="From Distance (KM)"
                     type="number"
                     value={rule.fromDistance}
                     onChange={(event) => updateRule(rule.localId, "fromDistance", event.target.value)}
                   />
 
                   <FloatingInput
-                    label="TO DISTANCE (KM) *"
+                    label="To Distance (KM)"
                     type="number"
                     value={rule.toDistance}
                     onChange={(event) => updateRule(rule.localId, "toDistance", event.target.value)}
                   />
 
                   <FloatingDropdown
-                    label="ALLOWANCE TO BE GET *"
+                    label="Allowance Type"
                     options={ALLOWANCE_OPTIONS}
                     value={rule.allowanceType}
                     onSelect={(value) => updateRule(rule.localId, "allowanceType", value)}
                   />
 
                   <FloatingDropdown
-                    label="SELECT APPLICABLE TO *"
+                    label="Select Applicable To"
                     options={APPLICABLE_OPTIONS}
                     value={rule.applicableTo}
                     onSelect={(value) => updateRule(rule.localId, "applicableTo", value)}
                   />
 
                   <FloatingInput
-                    label="ENTER TA PER KM *"
+                    label="Enter TA Per KM"
                     type="number"
                     value={rule.fare}
                     onChange={(event) => updateRule(rule.localId, "fare", event.target.value)}
                   />
 
                   <FloatingInput
-                    label="ENTER FRC CODE *"
+                    label="Enter FRC Code"
                     value={rule.frcCode}
                     onChange={(event) => updateRule(rule.localId, "frcCode", event.target.value)}
                   />
 
                   <div className="col-span-2">
                     <FloatingTextarea
-                      label="ENTER DESCRIPTION *"
+                      label="Enter Description"
                       value={rule.description}
                       onChange={(event) => updateRule(rule.localId, "description", event.target.value)}
                     />
@@ -589,13 +780,13 @@ export default function FareRateCard() {
           </div>
         </div>
 
-        <div className="ucr-footer" style={{ justifyContent: "flex-start" }}>
+        <div className="dc-footer" style={{ justifyContent: "flex-start", gap: 12 }}>
           <button
             type="button"
             onClick={addRule}
             style={{
-              width: 40, height: 40, borderRadius: "50%", background: "#fff", border: "1px solid #dbeafe",
-              color: "#2563eb", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center"
+              width: 40, height: 40, borderRadius: "50%", background: "#fff", border: "1px solid #bfdbfe",
+              color: "#2563eb", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s"
             }}
             title="Add one more Fare Rate Designation"
           >
@@ -606,13 +797,10 @@ export default function FareRateCard() {
             type="button"
             onClick={handleCreateFrc}
             disabled={isSubmitting || isLoadingInitial}
-            style={{
-              height: 40, padding: "0 24px", borderRadius: 8, background: "#2563eb", color: "#fff",
-              fontSize: 13, fontWeight: 700, border: "none", cursor: (isSubmitting || isLoadingInitial) ? "not-allowed" : "pointer",
-              opacity: (isSubmitting || isLoadingInitial) ? 0.6 : 1, display: "flex", alignItems: "center", gap: 8
-            }}
+            className="dc-submit-btn"
+            style={{ marginLeft: "auto" }}
           >
-            {isSubmitting ? <Loader2 size={16} style={{ animation: "ucr-spin 1s linear infinite" }} /> : <Save size={16} />}
+            {isSubmitting ? <Loader2 size={14} style={{ animation: "dc-spin 1s linear infinite" }} /> : <Save size={14} />}
             Create FRC
           </button>
         </div>
@@ -620,9 +808,9 @@ export default function FareRateCard() {
 
       {/* Table Section */}
       {showTable && (
-        <div className="ucr-card">
-          <div className="ucr-header" style={{ justifyContent: "space-between", background: "#f9fafb" }}>
-            <h3 style={{ fontSize: 14, fontWeight: 700, color: "#374151", margin: 0 }}>Fare Rate Card Entries</h3>
+        <div className="dc-card">
+          <div className="dc-header" style={{ background: "#f8fafc" }}>
+            <h1 className="ucr-brand" style={{ fontSize: 14, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.04em" }}>Fare Rate Card Entries</h1>
             <div style={{ position: "relative", width: 280, maxWidth: "100%" }}>
               <input
                 type="text"
@@ -630,16 +818,16 @@ export default function FareRateCard() {
                 onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder="Search designation, code..."
                 style={{
-                  width: "100%", height: 36, borderRadius: 8, border: "1px solid #d1d5db",
-                  padding: "0 32px 0 12px", fontSize: 13, outline: "none", color: "#111827"
+                  width: "100%", height: 40, borderRadius: 8, border: "1px solid #e2e8f0",
+                  padding: "0 32px 0 12px", fontSize: 13, outline: "none", color: "#1e293b", background: "#fff"
                 }}
               />
-              <Search size={14} style={{ position: "absolute", right: 10, top: 11, color: "#9ca3af" }} />
+              <Search size={15} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} />
             </div>
           </div>
 
-          <div className="ucr-body" style={{ padding: 0 }}>
-            <div className="ucr-table-container" style={{ border: "none", borderRadius: "0 0 16px 16px" }}>
+          <div className="dc-body" style={{ padding: "20px 28px 24px" }}>
+            <div className="ucr-table-container">
               <table className="ucr-table">
                 <thead>
                   <tr>
@@ -660,26 +848,26 @@ export default function FareRateCard() {
                   {isTableLoading ? (
                     <tr>
                       <td colSpan={11} style={{ textAlign: "center", padding: 40 }}>
-                        <Loader2 style={{ animation: "ucr-spin 1s linear infinite", margin: "0 auto", color: "#2563eb" }} size={24} />
+                        <Loader2 style={{ animation: "dc-spin 1s linear infinite", margin: "0 auto", color: "#3B82F6" }} size={20} />
                       </td>
                     </tr>
                   ) : filteredRecords.length === 0 ? (
                     <tr>
-                      <td colSpan={11} style={{ textAlign: "center", padding: 40, color: "#9ca3af" }}>
+                      <td colSpan={11} style={{ textAlign: "center", padding: 40, color: "#94a3b8", fontStyle: "italic" }}>
                         No fare rate card data found.
                       </td>
                     </tr>
                   ) : (
                     filteredRecords.map((record, index) => (
                       <tr key={record.id}>
-                        <td style={{ color: "#6b7280" }}>{index + 1}</td>
-                        <td style={{ fontWeight: 600 }}>{record.designationId || "-"}</td>
-                        <td style={{ fontWeight: 600 }}>{record.designationName || "-"}</td>
+                        <td style={{ color: "#64748b" }}>{index + 1}</td>
+                        <td style={{ fontWeight: 600, color: "#1e293b" }}>{record.designationId || "-"}</td>
+                        <td style={{ fontWeight: 600, color: "#1e293b" }}>{record.designationName || "-"}</td>
                         <td>{record.fromDistance}</td>
                         <td>{record.toDistance}</td>
                         <td>{record.allowanceType}</td>
                         <td style={{ color: "#2563eb", fontWeight: 700, textTransform: "uppercase" }}>{record.applicableTo}</td>
-                        <td style={{ fontWeight: 700 }}>{record.fare}</td>
+                        <td style={{ fontWeight: 700, color: "#1e293b" }}>{record.fare}</td>
                         <td style={{ maxWidth: 200, whiteSpace: "normal", wordBreak: "break-word" }}>{record.description || "-"}</td>
                         <td style={{ fontWeight: 600 }}>{record.frcCode}</td>
                         <td>
@@ -690,7 +878,7 @@ export default function FareRateCard() {
                               style={{ background: "none", border: "none", color: "#2563eb", cursor: "pointer", padding: 4 }}
                               title="Edit"
                             >
-                              <Edit2 size={16} />
+                              <Edit2 size={15} />
                             </button>
                             <button
                               type="button"
@@ -698,7 +886,7 @@ export default function FareRateCard() {
                               style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", padding: 4 }}
                               title="Delete"
                             >
-                              <Trash2 size={16} />
+                              <Trash2 size={15} />
                             </button>
                           </div>
                         </td>
@@ -712,23 +900,23 @@ export default function FareRateCard() {
         </div>
       )}
 
-      {/* Edit Modal (Mobile Responsive) */}
-      {isEditModalOpen && editingRecord && (
+      {/* Edit Modal */}
+      {isEditModalOpen && editingRecord && createPortal(
         <div style={{
-          position: "fixed", inset: 0, zIndex: 1000, background: "rgba(17, 24, 39, 0.4)",
-          display: "flex", alignItems: "center", justifyContent: "center", padding: 16
+          position: "fixed", inset: 0, zIndex: 9999999, background: "rgba(15, 23, 42, 0.3)",
+          backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16
         }}>
-          <div className="ucr-card" style={{ 
+          <div className="dc-card" style={{ 
             width: "100%", maxWidth: 800, margin: 0, overflow: "visible", 
-            boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+            boxShadow: "0 20px 60px rgba(0, 0, 0, 0.15)",
             maxHeight: "90vh", display: "flex", flexDirection: "column"
           }}>
-            <div className="ucr-header" style={{ borderTopLeftRadius: 16, borderTopRightRadius: 16 }}>
-              <div style={{ width: 36, height: 36, borderRadius: 10, background: "#eff6ff", border: "1px solid #dbeafe", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Edit2 size={17} style={{ color: "#2563eb" }} />
-              </div>
-              <div style={{ flex: 1 }}>
-                <h2 style={{ fontSize: 15, fontWeight: 700, color: "#111827", margin: 0, textTransform: "uppercase" }}>Edit Fare Rate Card</h2>
+            <div className="dc-header">
+              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                <div className="dc-page-icon">
+                  <Edit2 size={16} color="#fff" />
+                </div>
+                <h1 className="ucr-brand" style={{ fontSize: 16, fontWeight: 700, color: "#1e293b" }}>Edit Fare Rate Card</h1>
               </div>
               <button
                 type="button"
@@ -737,17 +925,17 @@ export default function FareRateCard() {
                   setIsEditModalOpen(false);
                   setEditingRecord(null);
                 }}
-                style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 4, borderRadius: 6 }}
+                style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 4 }}
               >
                 <X size={20} />
               </button>
             </div>
 
-            <div className="ucr-body" style={{ overflowY: "auto", flex: 1 }}>
+            <div className="dc-body" style={{ overflowY: "auto", flex: 1, padding: "20px 28px 24px" }}>
               <div className="ucr-grid-4" style={{ marginBottom: 0 }}>
                 <div className="col-span-2">
                   <FloatingInput
-                    label="DESIGNATION NAME"
+                    label="Designation Name"
                     value={editingRecord.designationName}
                     onChange={(event) =>
                       setEditingRecord((prev) => ({ ...prev, designationName: event.target.value }))
@@ -757,7 +945,7 @@ export default function FareRateCard() {
                 </div>
 
                 <FloatingInput
-                  label="FROM DISTANCE (KM) *"
+                  label="From Distance (KM) *"
                   type="number"
                   value={editingRecord.fromDistance}
                   onChange={(event) =>
@@ -766,7 +954,7 @@ export default function FareRateCard() {
                 />
 
                 <FloatingInput
-                  label="TO DISTANCE (KM) *"
+                  label="To Distance (KM) *"
                   type="number"
                   value={editingRecord.toDistance}
                   onChange={(event) =>
@@ -775,7 +963,7 @@ export default function FareRateCard() {
                 />
 
                 <FloatingDropdown
-                  label="ALLOWANCE TO BE GET *"
+                  label="Allowance Type *"
                   options={ALLOWANCE_OPTIONS}
                   value={editingRecord.allowanceType}
                   onSelect={(value) =>
@@ -784,7 +972,7 @@ export default function FareRateCard() {
                 />
 
                 <FloatingDropdown
-                  label="SELECT APPLICABLE TO *"
+                  label="Select Applicable To *"
                   options={APPLICABLE_OPTIONS}
                   value={editingRecord.applicableTo}
                   onSelect={(value) =>
@@ -793,7 +981,7 @@ export default function FareRateCard() {
                 />
 
                 <FloatingInput
-                  label="ENTER TA PER KM *"
+                  label="Enter TA Per KM *"
                   type="number"
                   value={editingRecord.fare}
                   onChange={(event) =>
@@ -802,7 +990,7 @@ export default function FareRateCard() {
                 />
 
                 <FloatingInput
-                  label="ENTER FRC CODE *"
+                  label="Enter FRC Code *"
                   value={editingRecord.frcCode}
                   onChange={(event) =>
                     setEditingRecord((prev) => ({ ...prev, frcCode: event.target.value }))
@@ -811,7 +999,7 @@ export default function FareRateCard() {
 
                 <div className="col-span-4">
                   <FloatingTextarea
-                    label="ENTER DESCRIPTION *"
+                    label="Enter Description *"
                     value={editingRecord.description}
                     onChange={(event) =>
                       setEditingRecord((prev) => ({ ...prev, description: event.target.value }))
@@ -821,17 +1009,14 @@ export default function FareRateCard() {
               </div>
             </div>
 
-            <div className="ucr-footer" style={{ borderBottomLeftRadius: 16, borderBottomRightRadius: 16 }}>
+            <div className="dc-footer" style={{ gap: 12 }}>
               <button
                 type="button"
                 onClick={() => {
                   setIsEditModalOpen(false);
                   setEditingRecord(null);
                 }}
-                style={{
-                  height: 38, padding: "0 20px", borderRadius: 8, background: "#fff",
-                  border: "1px solid #d1d5db", color: "#4b5563", fontWeight: 600, fontSize: 13, cursor: "pointer"
-                }}
+                className="dc-delete-footer-btn"
               >
                 Cancel
               </button>
@@ -839,16 +1024,39 @@ export default function FareRateCard() {
                 type="button"
                 onClick={handleUpdateRecord}
                 disabled={isSubmitting}
-                style={{
-                  height: 38, padding: "0 20px", borderRadius: 8, background: "#2563eb", color: "#fff",
-                  fontSize: 13, fontWeight: 700, border: "none", cursor: isSubmitting ? "not-allowed" : "pointer",
-                  opacity: isSubmitting ? 0.6 : 1, display: "flex", alignItems: "center", gap: 8
-                }}
+                className="dc-submit-btn"
               >
-                {isSubmitting ? <Loader2 size={16} style={{ animation: "ucr-spin 1s linear infinite" }} /> : <Save size={16} />}
-                Update
+                {isSubmitting ? <Loader2 size={14} style={{ animation: "dc-spin 1s linear infinite" }} /> : <Save size={14} />}
+                Update Changes
               </button>
             </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* ── Success Popup ── */}
+      {popup.isOpen && (
+        <div className="dc-overlay">
+          <div className="dc-popup">
+            <div style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(59,130,246,0.06)", border: "1px solid rgba(59,130,246,0.25)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
+              <Check size={28} style={{ color: "#3B82F6", strokeWidth: 2.5 }} />
+            </div>
+            <h3 className="ucr-brand" style={{ fontSize: 17, fontWeight: 700, color: "#1e293b", textAlign: "center", margin: "0 0 8px", letterSpacing: "-0.01em" }}>Success</h3>
+            <p style={{ fontSize: 13, color: "#94a3b8", textAlign: "center", margin: "0 0 24px" }}>{popup.message}</p>
+            <button
+              type="button"
+              onClick={() => setPopup({ isOpen: false, message: "" })}
+              style={{
+                background: "linear-gradient(135deg, #3B82F6, #2563eb)", color: "#fff", border: "none", borderRadius: 8,
+                padding: "10px 0", width: "100%", fontSize: 13.5, fontWeight: 600, cursor: "pointer",
+                fontFamily: "'Plus Jakarta Sans', sans-serif", boxShadow: "0 4px 14px rgba(59,130,246,0.2)", transition: "all 0.15s"
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 6px 20px rgba(59,130,246,0.3)"; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 14px rgba(59,130,246,0.2)"; }}
+            >
+              Continue
+            </button>
           </div>
         </div>
       )}
@@ -857,16 +1065,10 @@ export default function FareRateCard() {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// UI Components Restyled to match Reference FSelect (Mobile Fixed)
+// UI Floating Controls Input Elements
 // ═══════════════════════════════════════════════════════════════════
 
-function FloatingInput({
-  label,
-  value,
-  onChange,
-  type = "text",
-  disabled = false,
-}) {
+function FloatingInput({ label, value, onChange, type = "text", disabled = false }) {
   const [isFocused, setIsFocused] = useState(false);
   const hasValue = value !== "" && value !== null && value !== undefined;
   const active = hasValue || isFocused;
@@ -880,21 +1082,22 @@ function FloatingInput({
         disabled={disabled}
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
+        placeholder=" "
         style={{
           width: "100%", height: FH, borderRadius: 8, padding: "0 12px", fontSize: 13,
-          border: `1.5px solid ${active && !disabled ? "#2563eb" : "#d1d5db"}`, outline: "none",
-          fontWeight: 600, color: disabled ? "#6b7280" : "#111827",
-          background: disabled ? "#f3f4f6" : "#fff",
-          transition: "border-color 0.2s"
+          border: `1.5px solid ${active && !disabled ? "#3B82F6" : "#e2e8f0"}`, outline: "none",
+          fontWeight: 500, color: disabled ? "#94a3b8" : "#1e293b",
+          background: disabled ? "#f8fafc" : isFocused ? "#eff6ff" : "#fff",
+          boxShadow: isFocused && !disabled ? "0 0 0 3px rgba(59,130,246,0.15)" : "none",
+          transition: "all 0.18s ease-in-out"
         }}
       />
       <label
         style={{
-          position: "absolute", left: 10, top: active ? -9 : 12, fontSize: active ? 10 : 12,
-          fontWeight: 600, color: disabled ? "#9ca3af" : (active ? "#2563eb" : "#9ca3af"),
-          background: disabled ? (active ? "#f3f4f6" : "transparent") : "#fff",
-          padding: "0 4px", transition: "0.2s", pointerEvents: "none",
-          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "calc(100% - 20px)"
+          position: "absolute", left: 10, top: active ? 0 : "50%", transform: "translateY(-50%)", fontSize: active ? 11 : 13,
+          fontWeight: 500, color: disabled ? "#cbd5e1" : (isFocused ? "#3B82F6" : hasValue ? "#64748b" : "#94a3b8"),
+          background: active ? "#fff" : "transparent", transition: "all 0.12s ease-out", pointerEvents: "none",
+          padding: active ? "0 5px" : "0", letterSpacing: active ? "0.02em" : "0",
         }}
       >
         {label}
@@ -917,18 +1120,18 @@ function FloatingTextarea({ label, value, onChange }) {
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
         style={{
-          width: "100%", minHeight: 60, borderRadius: 8, padding: "12px", fontSize: 13,
-          border: `1.5px solid ${active ? "#2563eb" : "#d1d5db"}`, outline: "none",
-          fontWeight: 600, color: "#111827", background: "#fff",
-          transition: "border-color 0.2s", resize: "vertical", fontFamily: "inherit"
+          width: "100%", minHeight: FH, borderRadius: 8, padding: "12px", fontSize: 13,
+          border: `1.5px solid ${isFocused ? "#3B82F6" : hasValue ? "#bfdbfe" : "#e2e8f0"}`, outline: "none",
+          fontWeight: 500, color: "#1e293b", background: isFocused ? "#eff6ff" : "#fff",
+          boxShadow: isFocused ? "0 0 0 3px rgba(59,130,246,0.15)" : "none",
+          transition: "all 0.18s ease-in-out", resize: "vertical", fontFamily: "inherit"
         }}
       />
       <label
         style={{
-          position: "absolute", left: 10, top: active ? -9 : 12, fontSize: active ? 10 : 12,
-          fontWeight: 600, color: active ? "#2563eb" : "#9ca3af", background: "#fff",
-          padding: "0 4px", transition: "0.2s", pointerEvents: "none",
-          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "calc(100% - 20px)"
+          position: "absolute", left: 10, top: active ? 0 : "50%", transform: "translateY(-50%)", fontSize: active ? 11 : 13,
+          fontWeight: 500, color: isFocused ? "#3B82F6" : hasValue ? "#64748b" : "#94a3b8", background: active ? "#fff" : "transparent",
+          padding: active ? "0 5px" : "0", transition: "all 0.12s ease-out", pointerEvents: "none"
         }}
       >
         {label}
@@ -937,12 +1140,19 @@ function FloatingTextarea({ label, value, onChange }) {
   );
 }
 
-function FloatingDropdown({ label, options, value, onSelect }) {
+// ─── Searchable Portal Configuration Dropdown Component ───
+function FloatingDropdown({ label, options, value, onSelect, disabled = false }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
   const ref = useRef(null);
 
   const selectedOption = options.find((option) => String(option.value) === String(value));
-  const active = isOpen || Boolean(value);
+  const hasVal = Boolean(value);
+  const active = isOpen || hasVal;
+  const borderColor = isOpen ? "#3B82F6" : hasVal ? "#bfdbfe" : "#e2e8f0";
+  const bgColor = disabled ? "#f8fafc" : isOpen ? "#eff6ff" : "#ffffff";
+  const shadow  = isOpen && !disabled ? "0 0 0 3px rgba(59,130,246,0.15)" : "none";
+  const labelColor = isOpen ? "#3B82F6" : hasVal ? "#64748b" : "#94a3b8";
 
   useEffect(() => {
     const handleOutsideClick = (e) => {
@@ -952,60 +1162,81 @@ function FloatingDropdown({ label, options, value, onSelect }) {
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
 
+  const handleTriggerClick = () => {
+    if (disabled) return;
+    if (!isOpen && ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      setCoords({
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX,
+        width: rect.width,
+      });
+    }
+    setIsOpen(!isOpen);
+  };
+
   return (
-    <div ref={ref} style={{ position: "relative", width: "100%" }}>
+    <div ref={ref} style={{ position: "relative", width: "100%", userSelect: "none" }} className="dc-field-wrap">
       <div
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleTriggerClick}
         style={{
-          width: "100%", height: FH, borderRadius: 8, padding: "0 12px", fontSize: 13, display: "flex",
-          alignItems: "center", border: `1.5px solid ${active ? "#2563eb" : "#d1d5db"}`, cursor: "pointer",
-          background: "#fff", transition: "border-color 0.2s"
+          width: "100%", height: FH, borderRadius: 8, padding: "0 36px 0 12px", fontSize: 13, display: "flex",
+          alignItems: "center", border: `1.5px solid ${disabled ? "#f1f5f9" : borderColor}`, cursor: disabled ? "not-allowed" : "pointer",
+          background: bgColor + " !important", boxShadow: disabled ? "none" : shadow, transition: "all 0.18s", boxSizing: "border-box"
         }}
       >
-        <span style={{ flex: 1, fontWeight: 600, color: value ? "#111827" : "transparent", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginRight: 8 }}>
+        <span style={{ flex: 1, fontWeight: 500, color: value ? "#1e293b" : "transparent", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontSize: 14 }}>
           {selectedOption?.label || " "}
         </span>
-        <ChevronDown size={14} style={{ color: "#9ca3af", transform: isOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "0.2s", flexShrink: 0 }} />
+        <div style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: isOpen ? "#3B82F6" : "#94a3b8", display: "flex", alignItems: "center" }}>
+          <ChevronDown size={15} style={{ transform: isOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }} />
+        </div>
       </div>
       <label
         style={{
-          position: "absolute", left: 10, top: active ? -9 : 12, fontSize: active ? 10 : 12,
-          fontWeight: 600, color: active ? "#2563eb" : "#9ca3af", background: "#fff",
-          padding: "0 4px", transition: "0.2s", pointerEvents: "none",
-          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "calc(100% - 20px)"
+          position: "absolute", left: 10, top: active ? 0 : "50%", transform: "translateY(-50%)", fontSize: active ? 11 : 13,
+          fontWeight: 500, color: disabled ? "#cbd5e1" : labelColor, background: active ? "#ffffff" : "transparent",
+          padding: active ? "0 5px" : "0", transition: "all 0.12s ease-out", pointerEvents: "none"
         }}
       >
         {label}
       </label>
 
-      {isOpen && (
-        <div
-          style={{
-            position: "absolute", top: "110%", left: 0, width: "100%", background: "#fff",
-            border: "1px solid #e5e7eb", borderRadius: 8, boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)", zIndex: 100
-          }}
-        >
-          {options.map((opt) => (
-            <div
-              key={opt.value}
-              onClick={() => { onSelect(opt.value); setIsOpen(false); }}
-              style={{
-                padding: "10px 12px", fontSize: 13, cursor: "pointer", fontWeight: 600,
-                background: String(value) === String(opt.value) ? "#eff6ff" : "transparent",
-                color: String(value) === String(opt.value) ? "#2563eb" : "#374151"
-              }}
-            >
-              {opt.label}
-            </div>
-          ))}
-        </div>
+      {isOpen && !disabled && createPortal(
+        <div className="dc-portal-dropdown" style={{ position: "absolute", top: coords.top + 4, left: coords.left, width: coords.width }}>
+          <ul style={{ maxHeight: 200, overflowY: "auto", margin: 0, padding: "4px 0", listStyle: "none", background: "#ffffff" }}>
+            {options.length === 0 ? (
+              <li style={{ padding: "12px 16px", fontSize: 12, color: "#94a3b8", fontStyle: "italic" }}>No options available</li>
+            ) : (
+              options.map((opt) => (
+                <li
+                  key={opt.value}
+                  className={`dc-opt${String(value) === String(opt.value) ? " selected" : ""}`}
+                  style={{
+                    padding: "10px 14px", fontSize: "13.5px", borderRadius: "8px", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px",
+                    color: String(value) === String(opt.value) ? "#2563eb" : "#475569",
+                    backgroundColor: String(value) === String(opt.value) ? "rgba(59,130,246,0.08)" : "#ffffff",
+                    fontWeight: String(value) === String(opt.value) ? "600" : "500"
+                  }}
+                  onMouseDown={(e) => { e.preventDefault(); onSelect(opt.value); setIsOpen(false); }}
+                >
+                  {String(value) === String(opt.value) && <Check size={12} style={{ color: "#3B82F6", flexShrink: 0 }} />}
+                  {opt.label}
+                </li>
+              ))
+            )}
+          </ul>
+        </div>,
+        document.body
       )}
     </div>
   );
 }
 
+// ─── MultiSelectDropdown ───
 function MultiSelectDropdown({ label, options, selectedValues, onChange, disabled = false }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
   const ref = useRef(null);
 
   useEffect(() => {
@@ -1015,6 +1246,19 @@ function MultiSelectDropdown({ label, options, selectedValues, onChange, disable
     document.addEventListener("mousedown", handleOutsideClick);
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
+
+  const handleTriggerClick = () => {
+    if (disabled) return;
+    if (!isOpen && ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      setCoords({
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX,
+        width: rect.width,
+      });
+    }
+    setIsOpen(!isOpen);
+  };
 
   const toggleValue = (value) => {
     if (selectedValues.includes(value)) {
@@ -1034,95 +1278,85 @@ function MultiSelectDropdown({ label, options, selectedValues, onChange, disable
 
   const hasValue = selectedValues.length > 0;
   const active = isOpen || hasValue;
+  const borderColor = isOpen ? "#3B82F6" : hasValue ? "#bfdbfe" : "#e2e8f0";
+  const bgColor = disabled ? "#f8fafc" : isOpen ? "#eff6ff" : "#ffffff";
+  const shadow  = isOpen && !disabled ? "0 0 0 3px rgba(59,130,246,0.15)" : "none";
+  const labelColor = isOpen ? "#3B82F6" : hasValue ? "#64748b" : "#94a3b8";
 
   return (
-    <div ref={ref} style={{ position: "relative", width: "100%" }}>
+    <div ref={ref} style={{ position: "relative", width: "100%", userSelect: "none" }} className="dc-field-wrap">
       <div
-        onClick={() => !disabled && setIsOpen(!isOpen)}
+        onClick={handleTriggerClick}
         style={{
-          width: "100%", height: FH, borderRadius: 8, padding: "0 12px", fontSize: 13, display: "flex",
-          alignItems: "center", border: `1.5px solid ${active && !disabled ? "#2563eb" : "#d1d5db"}`,
-          cursor: disabled ? "not-allowed" : "pointer", background: disabled ? "#f3f4f6" : "#fff",
-          transition: "border-color 0.2s"
+          width: "100%", height: FH, borderRadius: 8, padding: "0 36px 0 12px", fontSize: 13, display: "flex",
+          alignItems: "center", border: `1.5px solid ${disabled ? "#f1f5f9" : borderColor}`, cursor: disabled ? "not-allowed" : "pointer",
+          background: bgColor + " !important", boxShadow: disabled ? "none" : shadow, transition: "all 0.18s", boxSizing: "border-box"
         }}
       >
-        <span style={{ flex: 1, fontWeight: 600, color: hasValue ? "#111827" : "transparent", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginRight: 8 }}>
+        <span style={{ flex: 1, fontWeight: 500, color: hasValue ? "#1e293b" : "transparent", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontSize: 14 }}>
           {selectedLabel || " "}
         </span>
-        <ChevronDown size={14} style={{ color: "#9ca3af", transform: isOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "0.2s", flexShrink: 0 }} />
+        <div style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: isOpen ? "#3B82F6" : "#94a3b8", display: "flex", alignItems: "center" }}>
+          <ChevronDown size={15} style={{ transform: isOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }} />
+        </div>
       </div>
       <label
         style={{
-          position: "absolute", left: 10, top: active ? -9 : 12, fontSize: active ? 10 : 12,
-          fontWeight: 600, color: disabled ? "#9ca3af" : (active ? "#2563eb" : "#9ca3af"), background: disabled ? (active ? "#f3f4f6" : "transparent") : "#fff",
-          padding: "0 4px", transition: "0.2s", pointerEvents: "none",
-          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "calc(100% - 20px)"
+          position: "absolute", left: 10, top: active ? 0 : "50%", transform: "translateY(-50%)", fontSize: active ? 11 : 13,
+          fontWeight: 500, color: disabled ? "#cbd5e1" : labelColor, background: active ? "#ffffff" : "transparent",
+          padding: active ? "0 5px" : "0", transition: "all 0.12s ease-out", pointerEvents: "none"
         }}
       >
         {label}
       </label>
 
-      {isOpen && !disabled && (
-        <div
-          style={{
-            position: "absolute", top: "110%", left: 0, width: "100%", background: "#fff",
-            border: "1px solid #e5e7eb", borderRadius: 8, boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)", zIndex: 100, overflow: "hidden"
-          }}
-        >
-          {/* Strictly retaining exact Select All / Clear All design translated to inline css */}
-          <div style={{ display: "flex", borderBottom: "1px solid #f3f4f6" }}>
+      {isOpen && !disabled && createPortal(
+        <div className="dc-portal-dropdown" style={{ position: "absolute", top: coords.top + 4, left: coords.left, width: coords.width }}>
+          <div style={{ display: "flex", borderBottom: "1px solid #edf2f7", background: "#f8fafc" }}>
             <button
               type="button"
-              onClick={selectAll}
-              style={{ flex: 1, padding: "8px 0", fontSize: 12, fontWeight: 700, color: "#fff", background: "#2563eb", border: "none", cursor: "pointer" }}
+              onMouseDown={(e) => { e.preventDefault(); selectAll(); }}
+              style={{ flex: 1, padding: "10px", fontSize: 11, fontWeight: 700, background: "transparent", color: "#2563eb", border: "none", cursor: "pointer", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
             >
               Select All
             </button>
             <button
               type="button"
-              onClick={clearAll}
-              style={{ flex: 1, padding: "8px 0", fontSize: 12, fontWeight: 700, color: "#fff", background: "#ef4444", border: "none", cursor: "pointer" }}
+              onMouseDown={(e) => { e.preventDefault(); clearAll(); }}
+              style={{ flex: 1, padding: "10px", fontSize: 11, fontWeight: 700, background: "transparent", color: "#ef4444", border: "none", cursor: "pointer", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
             >
               Clear All
             </button>
           </div>
 
-          <div style={{ maxHeight: 200, overflowY: "auto", padding: "4px 0" }}>
+          <ul style={{ maxHeight: 200, overflowY: "auto", padding: "4px 0", margin: 0, listStyle: "none", background: "#ffffff" }}>
             {options.length === 0 ? (
-              <p style={{ padding: "12px 16px", fontSize: 13, color: "#9ca3af", margin: 0 }}>No designation available.</p>
+              <li style={{ padding: "12px 16px", fontSize: 12, color: "#94a3b8", fontStyle: "italic" }}>No designation available</li>
             ) : (
               options.map((option) => {
                 const isSelected = selectedValues.includes(option.value);
                 return (
-                  <button
+                  <li
                     key={option.value}
-                    type="button"
-                    onClick={() => toggleValue(option.value)}
+                    className={`dc-opt${isSelected ? " selected" : ""}`}
                     style={{
-                      width: "100%", textAlign: "left", padding: "10px 16px", fontSize: 13, fontWeight: 600,
-                      display: "flex", alignItems: "center", gap: 10, background: isSelected ? "#eff6ff" : "transparent",
-                      color: isSelected ? "#2563eb" : "#4b5563", border: "none", cursor: "pointer"
+                      padding: "10px 14px", fontSize: "13.5px", borderRadius: "8px", cursor: "pointer",
+                      display: "flex", alignItems: "center", gap: "8px",
+                      color: isSelected ? "#2563eb" : "#475569",
+                      backgroundColor: isSelected ? "rgba(59,130,246,0.08)" : "#ffffff",
+                      fontWeight: isSelected ? "600" : "500"
                     }}
+                    onMouseDown={(e) => { e.preventDefault(); toggleValue(option.value); }}
                   >
-                    <span
-                      style={{
-                        width: 16, height: 16, borderRadius: 4, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
-                        border: isSelected ? "2px solid #2563eb" : "2px solid #d1d5db", background: isSelected ? "#2563eb" : "#fff"
-                      }}
-                    >
-                      {isSelected && (
-                        <svg viewBox="0 0 10 8" style={{ width: 10, height: 8 }} fill="none">
-                          <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      )}
-                    </span>
+                    <input type="checkbox" checked={isSelected} readOnly style={{ accentColor: "#3B82F6", cursor: "pointer", marginRight: 4 }} />
                     {option.label}
-                  </button>
+                  </li>
                 );
               })
             )}
-          </div>
-        </div>
+          </ul>
+        </div>,
+        document.body
       )}
     </div>
   );

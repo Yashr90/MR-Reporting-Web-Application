@@ -1,271 +1,275 @@
-// import React, { useState, useEffect } from "react";
-// import { Edit2, Loader2, Briefcase, PlusCircle, CheckCircle2 } from "lucide-react";
-// import api from "../../../services/api";
-
-// export default function DesignationCreation() {
-//   const [designations, setDesignations] = useState([]);
-//   const [isLoading, setIsLoading] = useState(true);
-//   const [isSubmitting, setIsSubmitting] = useState(false);
-//   const [error, setError] = useState("");
-//   const [successMsg, setSuccessMsg] = useState("");
-//   const [editingId, setEditingId] = useState(null);
-
-//   const [formData, setFormData] = useState({
-//     name: "",
-//     level: "",
-//     fullForm: ""
-//   });
-
-//   useEffect(() => {
-//     fetchDesignations();
-//   }, []);
-
-//   const fetchDesignations = async () => {
-//     try {
-//       setIsLoading(true);
-//       const response = await api.get('/api/masters/designations');
-//       if (response.data.success) {
-//         setDesignations(response.data.data);
-//       }
-//     } catch (err) {
-//       console.error("Failed to fetch designations", err);
-//       setDesignations([]);
-//     } finally {
-//       setIsLoading(false);
-//     }
-//   };
-
-//   const handleInputChange = (e) => {
-//     setFormData({ ...formData, [e.target.name]: e.target.value });
-//   };
-
-//   const handleEditClick = (item) => {
-//     setEditingId(item.id);
-//     setFormData({
-//       // 🚀 FIXED: Now mapping exactly to the Java entity properties
-//       name: item.name,
-//       level: item.level.toString(),
-//       fullForm: item.fullForm || ""
-//     });
-//     window.scrollTo({ top: 0, behavior: 'smooth' });
-//   };
-
-//   const handleSubmit = async (e) => {
-//     e.preventDefault();
-//     setError("");
-//     setSuccessMsg("");
-//     setIsSubmitting(true);
-
-//     // 🚀 FIXED: Payload exactly matches the Java backend expectations
-//     const payload = {
-//       name: formData.name,
-//       level: parseInt(formData.level),
-//       fullForm: formData.fullForm
-//     };
-
-//     try {
-//       let response;
-//       if (editingId) {
-//         response = await api.put(`/api/masters/designations/${editingId}`, payload);
-//       } else {
-//         response = await api.post('/api/masters/designations', payload);
-//       }
-
-//       if (response.data.success) {
-//         setFormData({ name: "", level: "", fullForm: "" });
-//         setEditingId(null);
-//         setSuccessMsg(editingId ? "Designation updated successfully!" : "Designation created successfully!");
-//         fetchDesignations(); 
-        
-//         setTimeout(() => setSuccessMsg(""), 3000);
-//       }
-//     } catch (err) {
-//       setError(err.response?.data?.message || "Failed to save designation.");
-//     } finally {
-//       setIsSubmitting(false);
-//     }
-//   };
-
-//   return (
-//     <div className="space-y-6 animate-in fade-in duration-500">
-      
-//       {/* 🌟 Top Card: Creation Form */}
-//       <div className="bg-white p-5 sm:p-8 rounded-xl shadow-sm border border-gray-100 relative overflow-hidden transition-all">
-//         <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-bl-full -z-10 opacity-50"></div>
-
-//         <div className="flex justify-between items-center mb-6">
-//           <div>
-//             <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-//               <Briefcase className="text-blue-600" size={24} />
-//               {editingId ? "Edit Designation" : "Designation Creation & Edit"}
-//             </h2>
-//             <p className="text-sm text-gray-500 mt-1">
-//               {editingId ? "Update the details for this role." : "Add new roles and hierarchy levels to the system."}
-//             </p>
-//           </div>
-//           {editingId && (
-//             <button 
-//               onClick={() => { setEditingId(null); setFormData({ name: "", level: "", fullForm: "" }); }}
-//               className="text-sm text-gray-500 hover:text-red-500 underline transition-colors"
-//             >
-//               Cancel Edit
-//             </button>
-//           )}
-//         </div>
-
-//         {error && <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg text-sm mb-6 border border-red-100 flex items-center gap-2">{error}</div>}
-//         {successMsg && <div className="bg-blue-50 text-blue-600 px-4 py-3 rounded-lg text-sm mb-6 border border-blue-100 flex items-center gap-2"><CheckCircle2 size={18} />{successMsg}</div>}
-
-//         {/* Form Container: Stacks on mobile, sits side-by-side on desktop */}
-//         <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-5 sm:gap-6 pt-2">
-          
-//           <FloatingInput 
-//             label="Designation Name" 
-//             name="name" 
-//             value={formData.name} 
-//             onChange={handleInputChange} 
-//             required 
-//           />
-
-//           <FloatingInput 
-//             type="number"
-//             label="Designation Level" 
-//             name="level" 
-//             value={formData.level} 
-//             onChange={handleInputChange} 
-//             required 
-//           />
-
-//           <FloatingInput 
-//             label="Designation Full Form" 
-//             name="fullForm" 
-//             value={formData.fullForm} 
-//             onChange={handleInputChange} 
-//           />
-
-//           {/* Submit Button */}
-//           <button 
-//             type="submit" 
-//             disabled={isSubmitting}
-//             className="group text-white px-6 py-2.5 rounded-md text-sm font-semibold shadow-md transition-all duration-300 hover:-translate-y-0.5 disabled:opacity-70 disabled:hover:translate-y-0 flex items-center gap-2 w-full sm:w-auto justify-center bg-blue-500 hover:bg-blue-600 shadow-blue-500/30"
-//           >
-//             {isSubmitting ? (
-//               <Loader2 className="animate-spin" size={18} />
-//             ) : editingId ? (
-//               <Edit2 size={18} />
-//             ) : (
-//               <PlusCircle size={18} className="group-hover:rotate-90 transition-transform duration-300" />
-//             )}
-//             {editingId ? "Update" : "Create"}
-//           </button>
-//         </form>
-//       </div>
-
-//       {/* 🌟 Bottom Card: Data Table */}
-//       <div className="bg-white p-5 sm:p-8 rounded-xl shadow-sm border border-gray-100">
-//         <h2 className="text-lg font-bold text-gray-800 mb-6">Existing Designations</h2>
-        
-//         {isLoading ? (
-//           <div className="flex flex-col items-center justify-center py-16 text-blue-600">
-//             <Loader2 className="animate-spin mb-4" size={40} />
-//             <p className="text-sm font-medium text-gray-500">Loading designations...</p>
-//           </div>
-//         ) : designations.length === 0 ? (
-          
-//           /* Empty State Animation */
-//           <div className="flex flex-col items-center justify-center py-16 px-4 text-center border-2 border-dashed border-gray-200 rounded-xl bg-gray-50/50">
-//             <div className="bg-white p-4 rounded-full shadow-sm mb-4">
-//               <Briefcase className="text-gray-400" size={32} />
-//             </div>
-//             <h3 className="text-gray-800 font-semibold mb-1">No Designations Found</h3>
-//             <p className="text-sm text-gray-500 max-w-sm">
-//               Your database is currently empty. Use the form above to create your first designation.
-//             </p>
-//           </div>
-
-//         ) : (
-//           <div className="overflow-x-auto overflow-y-hidden rounded-xl border border-gray-200 shadow-sm">
-//             <table className="w-full text-sm text-left min-w-[600px]">
-//               <thead className="bg-blue-500 text-white">
-//                 <tr>
-//                   <th className="py-3 px-5 font-semibold tracking-wide">S.N.</th>
-//                   <th className="py-3 px-5 font-semibold tracking-wide">Designation Name</th>
-//                   <th className="py-3 px-5 font-semibold tracking-wide text-center">Level</th>
-//                   <th className="py-3 px-5 font-semibold tracking-wide">Full Form</th>
-//                   <th className="py-3 px-5 font-semibold tracking-wide text-center">Action</th>
-//                 </tr>
-//               </thead>
-//               <tbody className="divide-y divide-gray-100 bg-white">
-//                 {designations.map((item, index) => (
-//                   <tr 
-//                     key={item.id} 
-//                     className={`transition-colors duration-200 group ${editingId === item.id ? 'bg-blue-50/50' : 'hover:bg-blue-50/30'}`}
-//                   >
-//                     <td className="py-3 px-5 text-gray-500 font-medium">{index + 1}.</td>
-//                     {/* 🚀 FIXED: Mapping exactly to item.name, item.level, item.fullForm */}
-//                     <td className="py-3 px-5 text-gray-800 font-bold">{item.name}</td>
-//                     <td className="py-3 px-5 text-center">
-//                       <span className="bg-gray-100 text-gray-600 px-2.5 py-1 rounded-md text-xs font-bold">
-//                         Lvl {item.level}
-//                       </span>
-//                     </td>
-//                     <td className="py-3 px-5 text-gray-600">{item.fullForm || '-'}</td>
-//                     <td className="py-3 px-5 flex justify-center">
-//                       <button 
-//                         onClick={() => handleEditClick(item)}
-//                         className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-100 rounded-lg transition-all duration-200 transform hover:scale-110 focus:outline-none"
-//                         title="Edit Designation"
-//                       >
-//                         <Edit2 size={18} />
-//                       </button>
-//                     </td>
-//                   </tr>
-//                 ))}
-//               </tbody>
-//             </table>
-//           </div>
-//         )}
-//       </div>
-//     </div>
-//   );
-// }
-
-// // 🧱 Slimmer Floating Label Component
-// function FloatingInput({ label, name, type = "text", value, onChange, required }) {
-//   return (
-//     <div className="relative w-full sm:flex-1 sm:min-w-[200px]">
-//       <input 
-//         type={type} 
-//         id={name}
-//         name={name}
-//         value={value}
-//         onChange={onChange}
-//         required={required}
-//         placeholder=" " 
-//         className="peer w-full rounded-md border border-blue-600 bg-transparent px-3 py-2.5 text-sm text-gray-900 transition-all duration-200 focus:border-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-700"
-//       />
-//       <label 
-//         htmlFor={name}
-//         className="pointer-events-none absolute left-2.5 top-2.5 origin-[0] -translate-y-5 scale-90 transform bg-white px-1 text-[13px] font-semibold uppercase tracking-wide text-blue-600 transition-all duration-200
-//         peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-placeholder-shown:text-gray-500 peer-placeholder-shown:font-normal
-//         peer-focus:-translate-y-5 peer-focus:scale-90 peer-focus:text-blue-600 peer-focus:font-semibold"
-//       >
-//         {label}
-//       </label>
-//     </div>
-//   );
-// }
-
 import React, { useState, useEffect } from "react";
-import { Edit2, Loader2, Briefcase, PlusCircle, CheckCircle2 } from "lucide-react";
+import { Edit2, Loader2, Briefcase, PlusCircle, Check, AlertCircle } from "lucide-react";
 import api from "../../../services/api";
+
+/* ─── Premium UI Styles & Utilities ──────────────────────────────────────── */
+const STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght=500;600;700;800&family=Inter:wght=400;500;600;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  .ucr-root {
+    font-family: 'Inter', sans-serif;
+    width: 100%;
+    background: #ffffff;
+  }
+
+  .ucr-brand { font-family: 'Plus Jakarta Sans', sans-serif; }
+
+  /* ── Single Unified Card Container ── */
+  .ucr-card {
+  background: #ffffff;
+  border: 1px solid #edf2f7;
+  border-radius: 16px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+}
+
+  /* ── Card Header ── */
+  .ucr-card-header {
+    padding: 24px 28px 16px;
+    background: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+  }
+
+  /* ── Sub-section Table Header ── */
+  .ucr-section-header {
+    padding: 24px 28px 16px;
+    background: #ffffff;
+    border-top: 1px solid #f1f5f9;
+  }
+
+  .ucr-page-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #3B82F6, #2563eb);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 3px 8px rgba(59,130,246,0.2);
+    flex-shrink: 0;
+  }
+
+  /* ── Form Body ── */
+  .ucr-body { padding: 20px 28px 24px; background: #ffffff; }
+
+  /* ── Single Row Flex Layout for Fields and Button ── */
+  .ucr-action-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 18px;
+    width: 100%;
+  }
+
+  .ucr-field-item {
+    flex: 1;
+    min-width: 0;
+  }
+
+  @media(max-width: 1024px) {
+    .ucr-action-row {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+    }
+    .ucr-submit-btn {
+      grid-column: span 2;
+      width: 100%;
+      justify-content: center !important;
+    }
+  }
+
+  @media(max-width: 640px) {
+    .ucr-action-row {
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+    .ucr-submit-btn {
+      grid-column: span 1;
+    }
+    .ucr-body { padding: 20px 16px; }
+    .ucr-card-header { padding: 20px 16px 12px; }
+    .ucr-section-header { padding: 20px 16px 12px; }
+  }
+
+  /* ── System Error Banner ── */
+  .ucr-error-banner {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 12px;
+    padding: 12px 16px;
+    color: #dc2626;
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .ucr-field-wrap { display: flex; flex-direction: column; gap: 4px; position: relative; }
+
+  /* ── Forced Browser Autocomplete/Autofill Override ── */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover, 
+  input:-webkit-autofill:focus, 
+  input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+    box-shadow: 0 0 0 1000px #ffffff inset !important;
+    -webkit-text-fill-color: #1e293b !important;
+    transition: background-color 5000s ease-in-out 0s;
+  }
+
+  /* ── Submission Button ── */
+  .ucr-submit-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    background: linear-gradient(135deg, #3B82F6, #2563eb);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(59,130,246,0.2);
+    transition: all 0.2s;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    letter-spacing: 0.01em;
+    height: 40px;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .ucr-submit-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(59,130,246,0.3);
+    background: linear-gradient(135deg, #60a5fa, #3B82F6);
+  }
+  .ucr-submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .ucr-overlay {
+    position: fixed; inset: 0; z-index: 1000;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(15,23,42,0.3);
+    backdrop-filter: blur(4px);
+    padding: 16px;
+  }
+
+  .ucr-popup {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.1);
+    padding: 36px 32px;
+    max-width: 360px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    animation: ucr-zoom 0.22s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  /* ── Table Styling (Forced rounding clipping added) ── */
+  .ucr-table-wrapper {
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: transparent;
+  border-radius: 0 0 16px 16px;
+}
+
+  .ucr-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 14px;
+    text-align: left;
+  }
+
+  .ucr-table th {
+    background: #f8fafc;
+    padding: 14px 20px;
+    color: #64748b;
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    border-bottom: 1px solid #edf2f7;
+  }
+
+  .ucr-table td {
+    padding: 14px 20px;
+    color: #334155;
+    border-bottom: 1px solid #f1f5f9;
+    transition: all 0.15s;
+  }
+
+  .ucr-table tr:last-child td {
+    border-bottom: none;
+  }
+
+  .ucr-table tr:hover td {
+    background: rgba(59, 130, 246, 0.02);
+  }
+
+  .ucr-badge {
+    background: rgba(59, 130, 246, 0.08);
+    color: #2563eb;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-block;
+  }
+
+  /* ── Action Button with Red Hover Styling ── */
+  .ucr-action-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 8px;
+    color: #94a3b8;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+  }
+
+  .ucr-action-btn:hover {
+    background: #fef2f2;
+    color: #ef4444;
+  }
+
+  @keyframes ucr-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+  @keyframes ucr-zoom { from{opacity:0;transform:scale(0.88)} to{opacity:1;transform:scale(1)} }
+`;
+
+const FH = 40;
+
+const fieldBase = {
+  width: "100%",
+  height: FH,
+  borderRadius: 8,
+  fontSize: 14,
+  color: "#1e293b",
+  outline: "none",
+  boxSizing: "border-box",
+  transition: "all 0.18s",
+  fontFamily: "'Inter', sans-serif",
+};
 
 export default function DesignationCreation() {
   const [designations, setDesignations] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [successMsg, setSuccessMsg] = useState("");
+  const [popup, setPopup] = useState({ isOpen: false, message: "" });
   const [editingId, setEditingId] = useState(null);
 
   const [formData, setFormData] = useState({
@@ -310,7 +314,6 @@ export default function DesignationCreation() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    setSuccessMsg("");
     setIsSubmitting(true);
 
     const payload = {
@@ -329,10 +332,9 @@ export default function DesignationCreation() {
 
       if (response.data.success) {
         setFormData({ name: "", level: "", fullForm: "" });
+        setPopup({ isOpen: true, message: editingId ? "Designation updated successfully!" : "Designation created successfully!" });
         setEditingId(null);
-        setSuccessMsg(editingId ? "Designation updated successfully!" : "Designation created successfully!");
         fetchDesignations();
-        setTimeout(() => setSuccessMsg(""), 3000);
       }
     } catch (err) {
       setError(err.response?.data?.message || "Failed to save designation.");
@@ -342,22 +344,22 @@ export default function DesignationCreation() {
   };
 
   return (
-    <div style={{ width: "100%", paddingBottom: 48, fontFamily: "Inter, sans-serif", display: "flex", flexDirection: "column", gap: 24 }}>
+    <div className="ucr-root">
+      <style>{STYLES}</style>
 
-      {/* ── Form Card ── */}
-      <div style={{ background: "#fff", borderRadius: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.07)", border: "1px solid #f3f4f6", overflow: "hidden" }}>
-
-        {/* Header */}
-        <div style={{ padding: "16px 20px", borderBottom: "1px solid #f3f4f6", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: "#eff6ff", border: "1px solid #dbeafe", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <Briefcase size={17} style={{ color: "#2563eb" }} />
+      {/* ── Single Unified Card Container ── */}
+      <div className="ucr-card">
+        {/* Main Card Header */}
+        <div className="ucr-card-header">
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div className="ucr-page-icon">
+              <Briefcase size={16} color="#fff" />
             </div>
             <div>
-              <h2 style={{ fontSize: 15, fontWeight: 700, color: "#111827", margin: 0 }}>
+              <h1 className="ucr-brand" style={{ fontSize: 16, fontWeight: 700, color: "#1e293b", letterSpacing: "-0.01em", lineHeight: 1.2 }}>
                 {editingId ? "Edit Designation" : "Designation Creation & Edit"}
-              </h2>
-              <p style={{ fontSize: 11, color: "#6b7280", margin: 0, marginTop: 2 }}>
+              </h1>
+              <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>
                 {editingId ? "Update the details for this role." : "Add new roles and hierarchy levels to the system."}
               </p>
             </div>
@@ -365,160 +367,125 @@ export default function DesignationCreation() {
           {editingId && (
             <button
               onClick={() => { setEditingId(null); setFormData({ name: "", level: "", fullForm: "" }); }}
-              style={{ fontSize: 12, color: "#6b7280", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", fontWeight: 500 }}
+              style={{ fontSize: 13, color: "#64748b", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", fontWeight: 500 }}
             >
               Cancel Edit
             </button>
           )}
         </div>
 
-        {/* Body */}
-        <div style={{ padding: "24px" }}>
+        {/* Form Body Area */}
+        <div className="ucr-body">
           {error && (
-            <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 10, padding: "10px 16px", display: "flex", alignItems: "center", gap: 10, color: "#dc2626", fontSize: 13, fontWeight: 600, marginBottom: 20 }}>
+            <div className="ucr-error-banner">
+              <AlertCircle size={15} style={{ flexShrink: 0 }} />
               {error}
             </div>
           )}
-          {successMsg && (
-            <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 10, padding: "10px 16px", display: "flex", alignItems: "center", gap: 10, color: "#1d4ed8", fontSize: 13, fontWeight: 600, marginBottom: 20 }}>
-              <CheckCircle2 size={16} /> {successMsg}
-            </div>
-          )}
 
-          <form
-            onSubmit={handleSubmit}
-            style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 20 }}
-          >
-            <div style={{ flex: "1 1 200px", minWidth: 200 }}>
-              <FInput
-                label="Designation Name"
-                name="name"
-                value={formData.name}
-                onChange={handleInputChange}
-                required
-              />
-            </div>
-            <div style={{ flex: "1 1 160px", minWidth: 160 }}>
-              <FInput
-                label="Designation Level"
-                name="level"
-                type="number"
-                value={formData.level}
-                onChange={handleInputChange}
-                required
-              />
-            </div>
-            <div style={{ flex: "1 1 200px", minWidth: 200 }}>
-              <FInput
-                label="Designation Full Form"
-                name="fullForm"
-                value={formData.fullForm}
-                onChange={handleInputChange}
-              />
-            </div>
+          <form onSubmit={handleSubmit} autoComplete="off">
+            <div className="ucr-action-row">
+              <div className="ucr-field-item">
+                <FInput
+                  label="Designation Name"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+              <div className="ucr-field-item">
+                <FInput
+                  label="Designation Level"
+                  name="level"
+                  type="number"
+                  value={formData.level}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+              <div className="ucr-field-item">
+                <FInput
+                  label="Designation Full Form"
+                  name="fullForm"
+                  value={formData.fullForm}
+                  onChange={handleInputChange}
+                />
+              </div>
 
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 6,
-                padding: "9px 22px", borderRadius: 9, border: "none", cursor: isSubmitting ? "not-allowed" : "pointer",
-                fontSize: 13, fontWeight: 700, color: "#fff",
-                background: "#2563eb",
-                boxShadow: "0 2px 8px rgba(37,99,235,0.25)",
-                opacity: isSubmitting ? 0.7 : 1,
-                transition: "all 0.15s",
-                flexShrink: 0,
-              }}
-            >
-              {isSubmitting ? (
-                <Loader2 size={15} style={{ animation: "spin 1s linear infinite" }} />
-              ) : editingId ? (
-                <Edit2 size={15} />
-              ) : (
-                <PlusCircle size={15} />
-              )}
-              {editingId ? "Update" : "Create"}
-            </button>
+              <button type="submit" disabled={isSubmitting} className="ucr-submit-btn">
+                {isSubmitting ? (
+                  <Loader2 size={14} style={{ animation: "ucr-spin 1s linear infinite" }} />
+                ) : editingId ? (
+                  <Edit2 size={14} />
+                ) : (
+                  <PlusCircle size={14} />
+                )}
+                {isSubmitting ? "Saving…" : editingId ? "Update" : "Create"}
+              </button>
+            </div>
           </form>
         </div>
-      </div>
 
-      {/* ── Table Card ── */}
-      <div style={{ background: "#fff", borderRadius: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.07)", border: "1px solid #f3f4f6", overflow: "hidden" }}>
-
-        {/* Header */}
-        <div style={{ padding: "16px 20px", borderBottom: "1px solid #f3f4f6" }}>
-          <h2 style={{ fontSize: 15, fontWeight: 700, color: "#111827", margin: 0 }}>Existing Designations</h2>
+        {/* Sub-section Integrated Inner Table Header */}
+        <div className="ucr-section-header">
+          <h2 className="ucr-brand" style={{ fontSize: 15, fontWeight: 700, color: "#1e293b", margin: 0 }}>
+            Existing Designations
+          </h2>
         </div>
 
-        {/* Body */}
-        <div style={{ padding: "24px" }}>
+        {/* Integrated Table Body Area */}
+        <div
+  style={{
+    overflow: "hidden",
+    borderRadius: "0 0 16px 16px",
+  }}
+>
           {isLoading ? (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "64px 0", color: "#2563eb" }}>
-              <Loader2 size={36} style={{ animation: "spin 1s linear infinite", marginBottom: 12 }} />
-              <p style={{ fontSize: 13, color: "#6b7280", fontWeight: 500, margin: 0 }}>Loading designations...</p>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "64px 0", color: "#3B82F6" }}>
+              <Loader2 size={24} style={{ animation: "ucr-spin 1s linear infinite", marginBottom: 12 }} />
+              <p style={{ fontSize: 13, color: "#94a3b8", fontWeight: 500, margin: 0 }}>Loading designations...</p>
             </div>
           ) : designations.length === 0 ? (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "64px 16px", textAlign: "center", border: "2px dashed #e5e7eb", borderRadius: 14, background: "#f9fafb" }}>
-              <div style={{ background: "#fff", padding: 16, borderRadius: "50%", boxShadow: "0 1px 4px rgba(0,0,0,0.07)", marginBottom: 14 }}>
-                <Briefcase size={28} style={{ color: "#9ca3af" }} />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "48px 16px", margin: "0 24px 24px 24px", textAlign: "center", border: "2px dashed #e2e8f0", borderRadius: 14, background: "#f8fafc" }}>
+              <div style={{ background: "#ffffff", padding: 14, borderRadius: "50%", boxShadow: "0 4px 12px rgba(0,0,0,0.03)", border: "1px solid #e2e8f0", marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Briefcase size={24} style={{ color: "#94a3b8" }} />
               </div>
-              <h3 style={{ fontSize: 14, fontWeight: 700, color: "#111827", margin: "0 0 6px" }}>No Designations Found</h3>
-              <p style={{ fontSize: 12, color: "#6b7280", maxWidth: 320, margin: 0 }}>
+              <h3 className="ucr-brand" style={{ fontSize: 14, fontWeight: 700, color: "#1e293b", margin: "0 0 6px" }}>No Designations Found</h3>
+              <p style={{ fontSize: 12, color: "#94a3b8", maxWidth: 320, margin: 0 }}>
                 Your database is currently empty. Use the form above to create your first designation.
               </p>
             </div>
           ) : (
-            <div style={{ overflowX: "auto", borderRadius: 12, border: "1px solid #e5e7eb", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 600 }}>
+            <div className="ucr-table-wrapper">
+              <table className="ucr-table">
                 <thead>
-                  <tr style={{ background: "#2563eb" }}>
-                    {["S.N.", "Designation Name", "Level", "Full Form", "Action"].map((h, i) => (
-                      <th key={i} style={{
-                        padding: "12px 20px", color: "#fff", fontWeight: 700,
-                        fontSize: 12, letterSpacing: "0.05em", textAlign: i === 2 || i === 4 ? "center" : "left",
-                        whiteSpace: "nowrap",
-                      }}>
-                        {h}
-                      </th>
-                    ))}
+                  <tr>
+                    <th style={{ width: "80px", paddingLeft: "28px" }}>S.N.</th>
+                    <th>Designation Name</th>
+                    <th style={{ width: "120px" }}>Level</th>
+                    <th>Full Form</th>
+                    <th style={{ width: "100px", textTransform: "uppercase", textAlign: "center", paddingRight: "28px" }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {designations.map((item, index) => (
-                    <tr
-                      key={item.id}
-                      style={{
-                        background: editingId === item.id ? "#eff6ff" : index % 2 === 0 ? "#fff" : "#fafafa",
-                        borderBottom: "1px solid #f3f4f6",
-                        transition: "background 0.15s",
-                      }}
-                      onMouseEnter={e => { if (editingId !== item.id) e.currentTarget.style.background = "#f0f7ff"; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = editingId === item.id ? "#eff6ff" : index % 2 === 0 ? "#fff" : "#fafafa"; }}
-                    >
-                      <td style={{ padding: "12px 20px", color: "#6b7280", fontWeight: 500 }}>{index + 1}.</td>
-                      <td style={{ padding: "12px 20px", color: "#111827", fontWeight: 700 }}>{item.name}</td>
-                      <td style={{ padding: "12px 20px", textAlign: "center" }}>
-                        <span style={{ background: "#f3f4f6", color: "#374151", padding: "3px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700 }}>
+                    <tr key={item.id} style={{ background: editingId === item.id ? "rgba(59,130,246,0.04)" : "transparent" }}>
+                      <td style={{ paddingLeft: "28px", color: "#94a3b8", fontWeight: 500 }}>{index + 1}.</td>
+                      <td style={{ color: "#1e293b", fontWeight: 600 }}>{item.name}</td>
+                      <td>
+                        <span className="ucr-badge">
                           Lvl {item.level}
                         </span>
                       </td>
-                      <td style={{ padding: "12px 20px", color: "#6b7280" }}>{item.fullForm || "—"}</td>
-                      <td style={{ padding: "12px 20px", textAlign: "center" }}>
+                      <td style={{ color: "#64748b" }}>{item.fullForm || "—"}</td>
+                      <td style={{ textAlign: "center", paddingRight: "28px" }}>
                         <button
                           onClick={() => handleEditClick(item)}
+                          className="ucr-action-btn"
                           title="Edit Designation"
-                          style={{
-                            background: "none", border: "none", cursor: "pointer",
-                            padding: "6px", borderRadius: 8, color: "#9ca3af",
-                            display: "inline-flex", alignItems: "center", justifyContent: "center",
-                            transition: "all 0.15s",
-                          }}
-                          onMouseEnter={e => { e.currentTarget.style.background = "#eff6ff"; e.currentTarget.style.color = "#2563eb"; }}
-                          onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#9ca3af"; }}
                         >
-                          <Edit2 size={16} />
+                          <Edit2 size={15} />
                         </button>
                       </td>
                     </tr>
@@ -530,53 +497,118 @@ export default function DesignationCreation() {
         </div>
       </div>
 
-      <style>{`@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }`}</style>
+      {/* ── Success Popup ── */}
+      {popup.isOpen && (
+        <div className="ucr-overlay">
+          <div className="ucr-popup">
+            <div style={{
+              width: 64,
+              height: 64,
+              borderRadius: "50%",
+              background: "rgba(59,130,246,0.06)",
+              border: "1px solid rgba(59,130,246,0.25)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              marginBottom: 20,
+            }}>
+              <Check size={28} style={{ color: "#3B82F6", strokeWidth: 2.5 }} />
+            </div>
+
+            <h3 className="ucr-brand" style={{ fontSize: 17, fontWeight: 700, color: "#1e293b", textAlign: "center", margin: "0 0 8px", letterSpacing: "-0.01em" }}>
+              Success
+            </h3>
+            <p style={{ fontSize: 13, color: "#94a3b8", textAlign: "center", margin: "0 0 24px" }}>
+              {popup.message}
+            </p>
+
+            <button
+              onClick={() => setPopup({ isOpen: false, message: "" })}
+              style={{
+                background: "linear-gradient(135deg, #3B82F6, #2563eb)",
+                color: "#fff", border: "none", borderRadius: 8,
+                padding: "10px 0", width: "100%",
+                fontSize: 13.5, fontWeight: 600, cursor: "pointer",
+                fontFamily: "'Plus Jakarta Sans', sans-serif",
+                boxShadow: "0 4px 14px rgba(59,130,246,0.2)",
+                transition: "all 0.15s",
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.transform = "translateY(-1px)";
+                e.currentTarget.style.boxShadow = "0 6px 20px rgba(59,130,246,0.3)";
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = "0 4px 14px rgba(59,130,246,0.2)";
+              }}
+            >
+              Continue
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 /* ── Floating Label Input ── */
-function FInput({ label, name, type = "text", value, onChange, required, disabled }) {
+function FInput({ label, name, type = "text", value, onChange, required, disabled, error }) {
   const [focus, setFocus] = useState(false);
   const hasVal = Boolean(value?.toString().trim());
   const active = focus || hasVal;
 
+  const borderColor = error
+    ? "#fca5a5"
+    : focus ? "#3B82F6" : hasVal ? "#bfdbfe" : "#e2e8f0";
+  const bgColor = disabled ? "#f8fafc" : focus ? "#eff6ff" : "#ffffff";
+  const shadow  = focus && !disabled
+    ? (error ? "0 0 0 3px rgba(239,68,68,0.12)" : "0 0 0 3px rgba(59,130,246,0.15)")
+    : "none";
+  const labelColor = error
+    ? "#dc2626"
+    : focus ? "#3B82F6" : hasVal ? "#64748b" : "#94a3b8";
+
   return (
-    <div style={{ position: "relative", width: "100%", height: 38 }}>
-      <input
-        type={type}
-        name={name}
-        id={name}
-        value={value || ""}
-        onChange={onChange}
-        required={required}
-        disabled={disabled}
-        onFocus={() => setFocus(true)}
-        onBlur={() => setFocus(false)}
-        placeholder=" "
-        style={{
-          width: "100%", height: "100%", borderRadius: 8, padding: "0 12px",
-          fontSize: 13, color: "#111827", outline: "none", boxSizing: "border-box",
-          background: disabled ? "#f9fafb" : "#fff",
-          border: focus ? "1.5px solid #2563eb" : "1.5px solid #d1d5db",
-          boxShadow: focus ? "0 0 0 3px rgba(37,99,235,0.08)" : "none",
-          transition: "all 0.15s",
-        }}
-      />
-      <label
-        htmlFor={name}
-        style={{
-          position: "absolute", left: 10, pointerEvents: "none", zIndex: 10,
-          transition: "all 0.15s", fontWeight: 600, letterSpacing: "0.03em",
-          top: active ? -9 : 10,
-          fontSize: active ? 10 : 13,
-          color: focus ? "#2563eb" : active ? "#6b7280" : "#9ca3af",
-          background: active ? "#fff" : "transparent",
-          padding: active ? "0 4px" : "0",
-        }}
-      >
-        {label}
-      </label>
+    <div className="ucr-field-wrap">
+      <div style={{ position: "relative", width: "100%", height: FH }}>
+        <input
+          type={type}
+          id={name}
+          name={name}
+          value={value || ""}
+          onChange={onChange}
+          required={required}
+          disabled={disabled}
+          onFocus={() => setFocus(true)}
+          onBlur={() => setFocus(false)}
+          placeholder=" "
+          style={{
+            ...fieldBase,
+            padding: "0 12px",
+            background: bgColor,
+            border: `1.5px solid ${borderColor}`,
+            boxShadow: shadow,
+            color: disabled ? "#94a3b8" : "#1e293b",
+          }}
+        />
+        <label style={{
+          position: "absolute",
+          left: 10,
+          pointerEvents: "none",
+          zIndex: 20,
+          transition: "all 0.12s ease-out",
+          fontWeight: 500,
+          top: active ? "0" : "50%",
+          transform: active ? "translateY(-50%)" : "translateY(-50%)",
+          fontSize: active ? 11 : 13,
+          color: disabled ? "#cbd5e1" : labelColor,
+          background: active ? "#ffffff" : "transparent",
+          padding: active ? "0 5px" : "0",
+          letterSpacing: active ? "0.02em" : "0",
+        }}>
+          {label}{required ? " *" : ""}
+        </label>
+      </div>
     </div>
   );
 }

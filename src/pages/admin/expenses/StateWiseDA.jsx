@@ -1,58 +1,270 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { createPortal } from "react-dom";
 import {
-  Loader2, AlertCircle, CheckCircle2, ChevronDown,
-  Trash2, Edit, X, Save, Search, Wallet, Check,
-  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, FileSpreadsheet, Edit2
+  Loader2, AlertCircle, ChevronDown, SlidersHorizontal,
+  Search, ChevronLeft, ChevronRight, Wallet, Check, X, FileSpreadsheet, Edit2, Trash2, Save
 } from "lucide-react";
 import api from "../../../services/api";
 
-// ─── Global responsive styles (from reference) ───────────────────────────────
+// ─── Constants ──────────────────────────────────────────────────────────────
+const PAGE_SIZES = [10, 20, 50];
+const FH = 40;
+
+/* ─── Premium UI Styles & Utilities ──────────────────────────────────────── */
 const STYLES = `
-  *, *::before, *::after { box-sizing: border-box; }
-  .ucr-wrap  { width:100%; padding-bottom:48px; font-family:Inter,sans-serif; overflow-x: hidden; }
-  .ucr-card  { background:#fff; border-radius:16px; box-shadow:0 1px 4px rgba(0,0,0,0.07); border:1px solid #f3f4f6; overflow:visible; margin-bottom: 24px; }
-  .ucr-header{ padding:16px 20px; border-bottom:1px solid #f3f4f6; display:flex; align-items:center; gap:12px; }
-  .ucr-body  { padding:24px; }
-  .ucr-footer{ padding:14px 24px; background:#f9fafb; border-top:1px solid #f3f4f6; display:flex; align-items:center; justify-content:flex-end; border-radius:0 0 16px 16px; flex-wrap: wrap; gap: 12px; }
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght=500;600;700;800&family=Inter:wght=400;500;600;700&display=swap');
 
-  /* Responsive Table Scroll Logic */
-  .ucr-table-container {
-    border: 1px solid #f3f4f6;
-    border-radius: 12px;
-    overflow-x: auto;
-    background: #fff;
-    -webkit-overflow-scrolling: touch;
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  .dc-wrap {
+    font-family: 'Inter', sans-serif;
+    width: 100%;
   }
-  .ucr-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 1200px; }
-  .ucr-table thead { background: #f9fafb; border-bottom: 1px solid #f3f4f6; }
-  .ucr-table th { padding: 12px 16px; text-align: left; font-weight: 700; color: #6b7280; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
-  .ucr-table td { padding: 12px 16px; color: #374151; border-bottom: 1px solid #f3f4f6; white-space: nowrap; }
 
-  .ucr-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:20px; margin-bottom:24px; }
-  .ucr-grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:20px; margin-bottom:24px; }
+  .ucr-brand { font-family: 'Plus Jakarta Sans', sans-serif; }
 
-  /* Responsive Col Spans */
+  /* ── Single Unified Card Container ── */
+  .dc-card {
+    background: #ffffff !important;
+    border: 1px solid #edf2f7;
+    border-radius: 16px;
+    isolation: isolate;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+    position: relative;
+    overflow: visible !important;
+    margin-bottom: 24px;
+  }
+
+  /* ── Card Header ── */
+  .dc-header {
+    padding: 24px 28px 16px;
+    background: #ffffff !important;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+    border-radius: 16px 16px 0 0 !important;
+    overflow: visible !important;
+  }
+
+  .dc-page-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #3B82F6, #2563eb);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 3px 8px rgba(59,130,246,0.2);
+    flex-shrink: 0;
+  }
+
+  /* ── Form Body ── */
+  .dc-body { 
+    padding: 20px 28px 24px; 
+    background: #ffffff !important; 
+    border-bottom-left-radius: 16px; 
+    border-bottom-right-radius: 16px;
+    overflow: visible !important;
+  }
+
+  /* ── Form Footer ── */
+  .dc-footer {
+    padding: 20px 28px 24px;
+    background: #ffffff !important;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    border-radius: 16px;
+    border-top: 1px solid #f1f5f9;
+  }
+
+  /* ── Responsive Input Grids ── */
+  .ucr-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-bottom: 24px; }
+  .ucr-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px 16px; margin-bottom: 0; }
+
   .col-span-2 { grid-column: span 2; }
   .col-span-4 { grid-column: span 4; }
 
-  @media(max-width:1024px){
-    .ucr-grid, .ucr-grid-4 { grid-template-columns:repeat(2,1fr); gap:16px; }
+  @media(max-width: 1200px) {
+    .ucr-grid-4 { grid-template-columns: repeat(3, 1fr); }
+    .col-span-4 { grid-column: span 3; }
+  }
+  @media(max-width: 1024px) {
+    .ucr-grid, .ucr-grid-4 { grid-template-columns: repeat(2, 1fr); gap: 18px; }
     .col-span-4 { grid-column: span 2; }
   }
-  @media(max-width:768px){
-    .ucr-grid, .ucr-grid-4 { grid-template-columns:1fr; gap:16px; }
+  @media(max-width: 640px) {
+    .ucr-grid, .ucr-grid-4 { grid-template-columns: 1fr; gap: 20px; }
     .col-span-2, .col-span-4 { grid-column: span 1 !important; }
-    .ucr-body  { padding:16px; }
-    .ucr-header { padding: 16px; flex-direction: column; align-items: flex-start; }
-    .ucr-header > div { width: 100%; }
-    .modal-close-btn { align-self: flex-end; margin-top: -30px; }
-    .ucr-footer { justify-content: center; }
+    .dc-body { padding: 20px 16px; }
+    .dc-header { padding: 20px 16px 12px; }
+    .dc-footer { padding: 16px; }
+    .dc-submit-btn, .dc-delete-footer-btn { width: auto !important; }
   }
-  @keyframes ucr-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
-`;
 
-const PAGE_SIZES = [10, 20, 50];
-const FH = 40;
+  /* ── Portal Dropdown Layer ── */
+  .dc-portal-dropdown {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12), 0 4px 12px rgba(15, 23, 42, 0.04);
+    z-index: 9999999 !important;
+    overflow: hidden;
+  }
+
+  .dc-portal-dropdown ul {
+    background: #ffffff !important;
+    max-height: 220px;
+    overflow-y: auto;
+    padding: 6px;
+    margin: 0;
+    list-style: none;
+    scrollbar-width: thin;
+    scrollbar-color: #e2e8f0 transparent;
+  }
+
+  .dc-opt {
+    padding: 10px 14px;
+    font-size: 13.5px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #475569;
+    background: #ffffff !important;
+    transition: all 0.12s;
+    font-weight: 500;
+  }
+  .dc-opt:hover   { background: rgba(59,130,246,0.06) !important; color: #2563eb; }
+  .dc-opt.selected { background: rgba(59,130,246,0.08) !important; color: #2563eb; font-weight: 600; }
+
+  /* ── Premium Compact Table Container ── */
+  .ucr-table-container {
+    border: 1px solid #edf2f7;
+    border-radius: 12px;
+    overflow-x: auto;
+    background: #ffffff !important;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.01);
+    margin-bottom: 16px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .ucr-table { width: 100%; border-collapse: collapse; font-size: 13.5px; text-align: left; min-width: 1200px; }
+  .ucr-table thead tr { position: sticky; top: 0; z-index: 10; }
+  .ucr-table thead { background: #f8fafc; }
+  
+  .ucr-table th { 
+    padding: 12px 16px; 
+    font-size: 11px; 
+    font-weight: 600; 
+    text-transform: uppercase; 
+    letter-spacing: 0.05em; 
+    color: #64748b;
+    border-bottom: 1px solid #edf2f7; 
+    white-space: nowrap;
+  }
+  .ucr-table td { 
+    padding: 11px 16px; 
+    color: #475569; 
+    border-bottom: 1px solid #f8fafc; 
+    font-weight: 500; 
+    white-space: nowrap; 
+  }
+  .ucr-table tbody tr:last-child td { border-bottom: none; }
+  .ucr-table tbody tr:hover { background: #f8fafc; }
+
+  /* ── System Error Banner ── */
+  .dc-error-banner {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 12px;
+    padding: 12px 16px;
+    color: #dc2626;
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  /* ── Action Buttons ── */
+  .dc-submit-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    background: #2563eb !important;
+    color: #fff !important;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+    transition: all 0.2s;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    letter-spacing: 0.01em;
+    height: 40px;
+  }
+  .dc-submit-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.45);
+    background: #1d4ed8 !important;
+  }
+  .dc-submit-btn:disabled { background: #93c5fd !important; color: #ffffff !important; cursor: not-allowed; box-shadow: none; opacity: 0.8 !important; }
+
+  .dc-delete-footer-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    border: 1px solid #fecaca;
+    background: #ffffff !important;
+    color: #dc2626;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    height: 40px;
+  }
+  .dc-delete-footer-btn:hover:not(:disabled) {
+    background: #fef2f2 !important;
+    border-color: #fca5a5;
+  }
+  .dc-delete-footer-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .dc-overlay {
+    position: fixed; inset: 0; z-index: 1000;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(15,23,42,0.3);
+    backdrop-filter: blur(4px);
+    padding: 16px;
+  }
+
+  .dc-popup {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.1);
+    padding: 36px 32px;
+    max-width: 360px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    animation: dc-zoom 0.22s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  .dc-field-wrap { display: flex; flex-direction: column; gap: 4px; position: relative; overflow: visible !important; }
+
+  @keyframes dc-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+  @keyframes dc-zoom { from{opacity:0;transform:scale(0.88)} to{opacity:1;transform:scale(1)} }
+`;
 
 export default function StateWiseDA() {
   // ─── Master Data State ───────────────────────────────────────────────────────
@@ -77,7 +289,7 @@ export default function StateWiseDA() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [successMsg, setSuccessMsg] = useState("");
+  const [popup, setPopup] = useState({ isOpen: false, message: "" });
 
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -142,7 +354,7 @@ export default function StateWiseDA() {
   }, []);
 
   const handleSubmit = async () => {
-    setError(""); setSuccessMsg("");
+    setError(""); 
 
     if (selectedStateIds.length === 0) return setError("Please select at least one State.");
     if (selectedDesigIds.length === 0) return setError("Please select at least one Designation.");
@@ -165,13 +377,12 @@ export default function StateWiseDA() {
       };
 
       await api.post("/api/expense/daily-allowance", payload, getAuthHeaders());
-      setSuccessMsg("Daily Allowance created successfully!");
+      setPopup({ isOpen: true, message: "Daily Allowance created successfully!" });
 
       setSelectedStateIds([]);
       setSelectedDesigIds([]);
       setFormData({ hqDa: "", exDa: "", outDa: "", mobileAllowance: "", netAllowance: "", postageStationary: "", postageFreight: "" });
 
-      setTimeout(() => setSuccessMsg(""), 3500);
       refreshTable();
     } catch (err) {
       setError(err.response?.data?.message || "Failed to create record.");
@@ -185,8 +396,7 @@ export default function StateWiseDA() {
     if (!window.confirm("Are you sure you want to delete this record?")) return;
     try {
       await api.delete(`/api/expense/daily-allowance/${id}`, getAuthHeaders());
-      setSuccessMsg("Record deleted successfully!");
-      setTimeout(() => setSuccessMsg(""), 3500);
+      setPopup({ isOpen: true, message: "Record deleted successfully!" });
       refreshTable();
     } catch (err) {
       setError(err.response?.data?.message || "Failed to delete record.");
@@ -207,6 +417,7 @@ export default function StateWiseDA() {
       return setError("HQ DA, EX DA, and OUT DA are required.");
     }
     
+    setIsSubmitting(true);
     try {
       const payload = {
         hqDa: Number(editData.hqDa) || 0,
@@ -219,12 +430,13 @@ export default function StateWiseDA() {
       };
 
       await api.put(`/api/expense/daily-allowance/${editData.id}`, payload, getAuthHeaders());
-      setSuccessMsg("Record updated successfully!");
-      setTimeout(() => setSuccessMsg(""), 3500);
+      setPopup({ isOpen: true, message: "Record updated successfully!" });
       setEditModal(false);
       refreshTable();
     } catch (err) {
       setError(err.response?.data?.message || "Failed to update record.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -264,46 +476,42 @@ export default function StateWiseDA() {
   const goToPage = p => setCurrentPage(Math.min(Math.max(1, p), totalPages));
 
   return (
-    <div className="ucr-wrap">
+    <div className="dc-wrap">
       <style>{STYLES}</style>
 
-      {/* Alerts */}
       {error && (
-        <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 12, padding: "10px 16px", color: "#dc2626", fontSize: 13, fontWeight: 600, marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
-          <AlertCircle size={16} /> {error}
-        </div>
-      )}
-      {successMsg && (
-        <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 12, padding: "10px 16px", color: "#16a34a", fontSize: 13, fontWeight: 600, marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
-          <CheckCircle2 size={16} /> {successMsg}
+        <div className="dc-error-banner">
+          <AlertCircle size={15} style={{ flexShrink: 0 }} />
+          {error}
         </div>
       )}
 
       {/* Main Creation Card */}
-      <div className="ucr-card">
-        <div className="ucr-header">
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: "#eff6ff", border: "1px solid #dbeafe", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Wallet size={17} style={{ color: "#2563eb" }} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <h2 style={{ fontSize: 15, fontWeight: 700, color: "#111827", margin: 0 }}>Daily Allowance Form</h2>
-            <p style={{ fontSize: 11, color: "#6b7280", margin: 0, marginTop: 2 }}>
-              Configure allowances per state and designation
-            </p>
+      <div className="dc-card">
+        <div className="dc-header">
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div className="dc-page-icon">
+              <Wallet size={16} color="#fff" />
+            </div>
+            <div>
+              <h2 className="ucr-brand" style={{ fontSize: 16, fontWeight: 700, color: "#1e293b", letterSpacing: "-0.01em", lineHeight: 1.2 }}>Daily Allowance Form</h2>
+              <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>Configure allowances per state and designation</p>
+            </div>
           </div>
         </div>
 
-        <div className="ucr-body">
+        <div className="dc-body">
           <div style={{
-            background: "#f9fafb",
-            border: "1px solid #f3f4f6",
+            background: "#f8fafc",
+            border: "1px solid #edf2f7",
             borderRadius: 12,
             padding: "24px 20px 20px 20px",
             position: "relative",
+            overflow: "visible"
           }}>
-            <div style={{
-              position: "absolute", top: -10, left: 16, background: "#fff", border: "1px solid #f3f4f6",
-              padding: "2px 10px", borderRadius: 20, fontSize: 10, fontWeight: 700, color: "#2563eb", textTransform: "uppercase"
+            <div className="ucr-brand" style={{
+              position: "absolute", top: -10, left: 16, background: "#fff", border: "1px solid #edf2f7",
+              padding: "2px 10px", borderRadius: 100, fontSize: 10, fontWeight: 700, color: "#2563eb", textTransform: "uppercase", letterSpacing: "0.02em"
             }}>
               Allowance Details
             </div>
@@ -311,7 +519,7 @@ export default function StateWiseDA() {
             <div className="ucr-grid-4">
               <div className="col-span-2">
                 <MultiSelectDropdown
-                  label="SELECT STATE *"
+                  label="Select State"
                   options={stateOpts}
                   selectedIds={selectedStateIds}
                   onChange={setSelectedStateIds}
@@ -320,7 +528,7 @@ export default function StateWiseDA() {
               </div>
               <div className="col-span-2">
                 <MultiSelectDropdown
-                  label="SELECT DESIGNATION *"
+                  label="Select Designation"
                   options={desigOpts}
                   selectedIds={selectedDesigIds}
                   onChange={setSelectedDesigIds}
@@ -328,49 +536,45 @@ export default function StateWiseDA() {
                 />
               </div>
 
-              <FloatingInput label="ENTER HQ DA *" type="number" value={formData.hqDa} onChange={(e) => handleInputChange("hqDa", e.target.value)} />
-              <FloatingInput label="ENTER EX DA *" type="number" value={formData.exDa} onChange={(e) => handleInputChange("exDa", e.target.value)} />
+              <FloatingInput label="Enter HQ DA *" type="number" value={formData.hqDa} onChange={(e) => handleInputChange("hqDa", e.target.value)} />
+              <FloatingInput label="Enter EX DA *" type="number" value={formData.exDa} onChange={(e) => handleInputChange("exDa", e.target.value)} />
               <div className="col-span-2">
-                 <FloatingInput label="ENTER OUT DA *" type="number" value={formData.outDa} onChange={(e) => handleInputChange("outDa", e.target.value)} />
+                 <FloatingInput label="Enter OUT DA *" type="number" value={formData.outDa} onChange={(e) => handleInputChange("outDa", e.target.value)} />
               </div>
             </div>
 
-            <div style={{ borderBottom: "1px solid #e5e7eb", paddingBottom: 8, marginBottom: 16, marginTop: 8 }}>
-              <h3 style={{ fontSize: 13, fontWeight: 700, color: "#4b5563", margin: 0, textTransform: "uppercase" }}>Fix Expense Details</h3>
+            <div style={{ borderBottom: "1px solid #edf2f7", paddingBottom: 8, marginBottom: 16, marginTop: 16 }}>
+              <h3 className="ucr-brand" style={{ fontSize: 13, fontWeight: 700, color: "#64748b", margin: 0, textTransform: "uppercase", letterSpacing: "0.04em" }}>Fix Expense Details</h3>
             </div>
 
             <div className="ucr-grid-4" style={{ marginBottom: 0 }}>
-              <FloatingInput label="MOBILE ALLOWANCE" type="number" value={formData.mobileAllowance} onChange={(e) => handleInputChange("mobileAllowance", e.target.value)} />
-              <FloatingInput label="NET ALLOWANCES" type="number" value={formData.netAllowance} onChange={(e) => handleInputChange("netAllowance", e.target.value)} />
-              <FloatingInput label="POSTAGE / STATIONARY" type="number" value={formData.postageStationary} onChange={(e) => handleInputChange("postageStationary", e.target.value)} />
-              <FloatingInput label="POSTAGE / FREIGHT" type="number" value={formData.postageFreight} onChange={(e) => handleInputChange("postageFreight", e.target.value)} />
+              <FloatingInput label="Mobile Allowance" type="number" value={formData.mobileAllowance} onChange={(e) => handleInputChange("mobileAllowance", e.target.value)} />
+              <FloatingInput label="Net Allowances" type="number" value={formData.netAllowance} onChange={(e) => handleInputChange("netAllowance", e.target.value)} />
+              <FloatingInput label="Postage / Stationary" type="number" value={formData.postageStationary} onChange={(e) => handleInputChange("postageStationary", e.target.value)} />
+              <FloatingInput label="Postage / Freight" type="number" value={formData.postageFreight} onChange={(e) => handleInputChange("postageFreight", e.target.value)} />
             </div>
           </div>
         </div>
 
-        <div className="ucr-footer" style={{ justifyContent: "flex-start" }}>
+        <div className="dc-footer">
           <button
             type="button"
             onClick={handleSubmit}
             disabled={isSubmitting || isLoading}
-            style={{
-              height: 40, padding: "0 24px", borderRadius: 8, background: "#2563eb", color: "#fff",
-              fontSize: 13, fontWeight: 700, border: "none", cursor: (isSubmitting || isLoading) ? "not-allowed" : "pointer",
-              opacity: (isSubmitting || isLoading) ? 0.6 : 1, display: "flex", alignItems: "center", gap: 8
-            }}
+            className="dc-submit-btn"
           >
-            {isSubmitting ? <Loader2 size={16} style={{ animation: "ucr-spin 1s linear infinite" }} /> : <Save size={16} />}
+            {isSubmitting ? <Loader2 size={14} style={{ animation: "dc-spin 1s linear infinite" }} /> : <Save size={14} />}
             Create Daily Allowance
           </button>
         </div>
       </div>
 
       {/* Table Section */}
-      <div className="ucr-card">
-        <div className="ucr-header" style={{ justifyContent: "space-between", background: "#f9fafb" }}>
+      <div className="dc-card">
+        <div className="dc-header" style={{ background: "#f8fafc" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <h3 style={{ fontSize: 14, fontWeight: 700, color: "#374151", margin: 0 }}>Existing Daily Allowances</h3>
-            <span style={{ fontSize: 11, fontWeight: 700, background: "#f3f4f6", color: "#4b5563", padding: "4px 10px", borderRadius: 20, border: "1px solid #e5e7eb" }}>
+            <h1 className="ucr-brand" style={{ fontSize: 14, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.04em" }}>Existing Daily Allowances</h1>
+            <span style={{ fontSize: 11, fontWeight: 700, background: "#edf2f7", color: "#475569", padding: "4px 10px", borderRadius: 20 }}>
               {filteredData.length} Total
             </span>
           </div>
@@ -383,17 +587,18 @@ export default function StateWiseDA() {
                 onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
                 placeholder="Search State, Designation..."
                 style={{
-                  width: "100%", height: 36, borderRadius: 8, border: "1px solid #d1d5db",
-                  padding: "0 32px 0 12px", fontSize: 13, outline: "none", color: "#111827"
+                  width: "100%", height: 40, borderRadius: 8, border: "1px solid #e2e8f0",
+                  padding: "0 32px 0 12px", fontSize: 13, outline: "none", color: "#1e293b", background: "#fff"
                 }}
               />
-              <Search size={14} style={{ position: "absolute", right: 10, top: 11, color: "#9ca3af" }} />
+              <Search size={15} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} />
             </div>
             <button
+              type="button"
               onClick={handleExportExcel}
               style={{
-                height: 36, width: 36, borderRadius: 8, background: "#ecfdf5", border: "1px solid #a7f3d0",
-                color: "#059669", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer"
+                height: 40, width: 40, borderRadius: 8, background: "#ecfdf5", border: "1px solid #a7f3d0",
+                color: "#059669", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 2px 8px rgba(22,163,74,0.15)"
               }}
               title="Export to Excel"
             >
@@ -402,57 +607,57 @@ export default function StateWiseDA() {
           </div>
         </div>
 
-        <div className="ucr-body" style={{ padding: 0 }}>
+        <div className="dc-body" style={{ padding: 0 }}>
           <div className="ucr-table-container" style={{ border: "none", borderRadius: "0 0 16px 16px" }}>
             <table className="ucr-table">
               <thead>
                 <tr>
-                  <th style={{ textAlign: "center" }}>#</th>
+                  <th style={{ textAlign: "center", width: 60 }}>#</th>
                   <th>State</th>
                   <th>Designation</th>
-                  <th style={{ textAlign: "right" }}>HQ DA</th>
-                  <th style={{ textAlign: "right" }}>EX DA</th>
-                  <th style={{ textAlign: "right" }}>OUT DA</th>
-                  <th style={{ textAlign: "right" }}>Mobile All.</th>
-                  <th style={{ textAlign: "right" }}>Net All.</th>
-                  <th style={{ textAlign: "right" }}>Special All.</th>
-                  <th style={{ textAlign: "center" }}>Actions</th>
+                  <th>HQ DA</th>
+                  <th>EX DA</th>
+                  <th>OUT DA</th>
+                  <th>Mobile All.</th>
+                  <th>Net All.</th>
+                  <th>Special All.</th>
+                  <th style={{ textAlign: "center", width: 100 }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {isLoading ? (
                   <tr>
                     <td colSpan={10} style={{ textAlign: "center", padding: 40 }}>
-                      <Loader2 style={{ animation: "ucr-spin 1s linear infinite", margin: "0 auto", color: "#2563eb" }} size={24} />
+                      <Loader2 style={{ animation: "dc-spin 1s linear infinite", margin: "0 auto", color: "#3B82F6" }} size={20} />
                     </td>
                   </tr>
                 ) : pagedData.length === 0 ? (
                   <tr>
-                    <td colSpan={10} style={{ textAlign: "center", padding: 40, color: "#9ca3af" }}>
+                    <td colSpan={10} style={{ textAlign: "center", padding: 40, color: "#94a3b8", fontStyle: "italic" }}>
                       No records found.
                     </td>
                   </tr>
                 ) : (
                   pagedData.map((row, i) => (
                     <tr key={row.id}>
-                      <td style={{ color: "#6b7280", textAlign: "center" }}>{(currentPage - 1) * pageSize + i + 1}</td>
-                      <td style={{ fontWeight: 600, textTransform: "uppercase" }}>{row.stateName || "—"}</td>
+                      <td style={{ color: "#64748b", textAlign: "center" }}>{(currentPage - 1) * pageSize + i + 1}</td>
+                      <td style={{ fontWeight: 600, textTransform: "uppercase", color: "#1e293b" }}>{row.stateName || "—"}</td>
                       <td style={{ fontWeight: 600, color: "#2563eb" }}>{row.designationName || "—"}</td>
-                      <td style={{ textAlign: "right", fontWeight: 700 }}>₹{row.hqDa || 0}</td>
-                      <td style={{ textAlign: "right", fontWeight: 700 }}>₹{row.exDa || 0}</td>
-                      <td style={{ textAlign: "right", fontWeight: 700 }}>₹{row.outDa || 0}</td>
-                      <td style={{ textAlign: "right" }}>₹{row.mobileAllowance || 0}</td>
-                      <td style={{ textAlign: "right" }}>₹{row.netAllowance || 0}</td>
-                      <td style={{ textAlign: "right" }}>₹{row.specialAllowance || 0}</td>
+                      <td style={{ fontWeight: 700, color: "#1e293b" }}>₹{row.hqDa || 0}</td>
+                      <td style={{ fontWeight: 700, color: "#1e293b" }}>₹{row.exDa || 0}</td>
+                      <td style={{ fontWeight: 700, color: "#1e293b" }}>₹{row.outDa || 0}</td>
+                      <td>₹{row.mobileAllowance || 0}</td>
+                      <td>₹{row.netAllowance || 0}</td>
+                      <td>₹{row.specialAllowance || 0}</td>
                       <td>
-                        <div style={{ display: "flex", alignItems: "center", justifyItems: "center", justifyContent: "center", gap: 12 }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
                           <button
                             type="button"
                             onClick={() => openEditModal(row)}
                             style={{ background: "none", border: "none", color: "#2563eb", cursor: "pointer", padding: 4 }}
                             title="Edit"
                           >
-                            <Edit2 size={16} />
+                            <Edit2 size={15} />
                           </button>
                           <button
                             type="button"
@@ -460,7 +665,7 @@ export default function StateWiseDA() {
                             style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", padding: 4 }}
                             title="Delete"
                           >
-                            <Trash2 size={16} />
+                            <Trash2 size={15} />
                           </button>
                         </div>
                       </td>
@@ -469,18 +674,19 @@ export default function StateWiseDA() {
                 )}
               </tbody>
             </table>
+          </div>
 
-            {/* Pagination Footer Styled */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderTop: "1px solid #f3f4f6", background: "#f9fafb", fontSize: 11, flexWrap: "wrap", gap: 12 }}>
-              <div style={{ color: "#6b7280" }}>
-                Showing <span style={{ fontWeight: 700, color: "#374151" }}>{pagedData.length === 0 ? 0 : (currentPage - 1) * pageSize + 1}</span> to <span style={{ fontWeight: 700, color: "#374151" }}>{Math.min(currentPage * pageSize, filteredData.length)}</span> of <span style={{ fontWeight: 700, color: "#374151" }}>{filteredData.length}</span> entries
+          {filteredData.length > 0 && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderTop: "1px solid #edf2f7", background: "#f8fafc", fontSize: 12, flexWrap: "wrap", gap: 12, borderBottomLeftRadius: 16, borderBottomRightRadius: 16 }}>
+              <div style={{ color: "#64748b" }}>
+                Showing <span style={{ fontWeight: 700, color: "#1e293b" }}>{(currentPage - 1) * pageSize + 1}</span> to <span style={{ fontWeight: 700, color: "#1e293b" }}>{Math.min(currentPage * pageSize, filteredData.length)}</span> of <span style={{ fontWeight: 700, color: "#1e293b" }}>{filteredData.length}</span> entries
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ color: "#6b7280", marginRight: 6 }}>Items per page:</span>
+                <span style={{ color: "#64748b", marginRight: 6 }}>Items per page:</span>
                 <select
                   value={pageSize}
                   onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
-                  style={{ border: "1px solid #d1d5db", borderRadius: 4, padding: "2px 6px" }}
+                  style={{ border: "1px solid #e2e8f0", borderRadius: 6, padding: "2px 8px", outline: "none", cursor: "pointer", color: "#475569", background: "#ffffff", fontFamily: "'Inter', sans-serif" }}
                 >
                   {PAGE_SIZES.map((s) => (
                     <option key={s} value={s}>{s}</option>
@@ -488,47 +694,51 @@ export default function StateWiseDA() {
                 </select>
                 <div style={{ width: 12 }} />
                 <button
+                  type="button"
                   onClick={() => goToPage(1)} disabled={currentPage === 1}
-                  style={{ background: "#fff", border: "1px solid #d1d5db", borderRadius: 4, padding: "4px 8px", cursor: currentPage === 1 ? "not-allowed" : "pointer", opacity: currentPage === 1 ? 0.4 : 1, fontWeight: 600 }}
+                  style={pagBtnStyle}
                 >First</button>
                 <button
+                  type="button"
                   onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1}
-                  style={{ background: "#fff", border: "1px solid #d1d5db", borderRadius: 4, width: 26, height: 26, display: "flex", alignItems: "center", justifyItems: "center", cursor: currentPage === 1 ? "not-allowed" : "pointer", opacity: currentPage === 1 ? 0.4 : 1 }}
-                ><ChevronLeft size={13} style={{ margin: "0 auto" }} /></button>
-                <div style={{ background: "#2563eb", color: "#fff", border: "1px solid #2563eb", borderRadius: 4, padding: "4px 10px", fontWeight: 700 }}>
+                  style={{ ...pagBtnStyle, width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center" }}
+                ><ChevronLeft size={14} /></button>
+                <div style={{ background: "#2563eb", color: "#fff", border: "1px solid #2563eb", borderRadius: 6, padding: "4px 12px", fontWeight: 700 }}>
                   {currentPage}
                 </div>
                 <button
+                  type="button"
                   onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages || totalPages === 0}
-                  style={{ background: "#fff", border: "1px solid #d1d5db", borderRadius: 4, width: 26, height: 26, display: "flex", alignItems: "center", justifyItems: "center", cursor: (currentPage === totalPages || totalPages === 0) ? "not-allowed" : "pointer", opacity: (currentPage === totalPages || totalPages === 0) ? 0.4 : 1 }}
-                ><ChevronRight size={13} style={{ margin: "0 auto" }} /></button>
+                  style={{ ...pagBtnStyle, width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center" }}
+                ><ChevronRight size={14} /></button>
                 <button
+                  type="button"
                   onClick={() => goToPage(totalPages)} disabled={currentPage === totalPages || totalPages === 0}
-                  style={{ background: "#fff", border: "1px solid #d1d5db", borderRadius: 4, padding: "4px 8px", cursor: (currentPage === totalPages || totalPages === 0) ? "not-allowed" : "pointer", opacity: (currentPage === totalPages || totalPages === 0) ? 0.4 : 1, fontWeight: 600 }}
+                  style={pagBtnStyle}
                 >Last</button>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
-      {/* Edit Modal (Mobile Responsive) */}
-      {editModal && editData && (
+      {/* Edit Modal (React Portal Setup) */}
+      {editModal && editData && createPortal(
         <div style={{
-          position: "fixed", inset: 0, zIndex: 1000, background: "rgba(17, 24, 39, 0.4)",
-          display: "flex", alignItems: "center", justifyItems: "center", justifyContent: "center", padding: 16
+          position: "fixed", inset: 0, zIndex: 9999999, background: "rgba(15, 23, 42, 0.3)",
+          backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16
         }}>
-          <div className="ucr-card" style={{ 
+          <div className="dc-card" style={{ 
             width: "100%", maxWidth: 800, margin: 0, overflow: "visible", 
-            boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+            boxShadow: "0 20px 60px rgba(0, 0, 0, 0.15)",
             maxHeight: "90vh", display: "flex", flexDirection: "column"
           }}>
-            <div className="ucr-header" style={{ borderTopLeftRadius: 16, borderTopRightRadius: 16 }}>
-              <div style={{ width: 36, height: 36, borderRadius: 10, background: "#eff6ff", border: "1px solid #dbeafe", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Edit2 size={17} style={{ color: "#2563eb" }} />
-              </div>
-              <div style={{ flex: 1 }}>
-                <h2 style={{ fontSize: 15, fontWeight: 700, color: "#111827", margin: 0, textTransform: "uppercase" }}>Edit Daily Allowance</h2>
+            <div className="dc-header">
+              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                <div className="dc-page-icon">
+                  <Edit2 size={16} color="#fff" />
+                </div>
+                <h2 className="ucr-brand" style={{ fontSize: 15, fontWeight: 700, color: "#111827", margin: 0, textTransform: "uppercase" }}>Edit Daily Allowance</h2>
               </div>
               <button
                 type="button"
@@ -537,24 +747,24 @@ export default function StateWiseDA() {
                   setEditModal(false);
                   setEditData(null);
                 }}
-                style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", justifyItems: "center", padding: 4, borderRadius: 6 }}
+                style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 4 }}
               >
                 <X size={20} />
               </button>
             </div>
 
-            <div className="ucr-body" style={{ overflowY: "auto", flex: 1 }}>
-              <div className="ucr-grid-4" style={{ marginBottom: 0 }}>
+            <div className="dc-body" style={{ overflowY: "auto", flex: 1, padding: "20px 28px 24px" }}>
+              <div className="ucr-grid-4">
                 <div className="col-span-2">
                   <FloatingInput
-                    label="STATE"
+                    label="State"
                     value={editData.stateName || "—"}
                     disabled
                   />
                 </div>
                 <div className="col-span-2">
                   <FloatingInput
-                    label="DESIGNATION"
+                    label="Designation"
                     value={editData.designationName || "—"}
                     disabled
                   />
@@ -579,30 +789,30 @@ export default function StateWiseDA() {
                   onChange={(e) => setEditData({ ...editData, outDa: e.target.value })}
                 />
                 
-                <div className="col-span-4" style={{ borderBottom: "1px solid #e5e7eb", paddingBottom: 8, marginTop: 16, marginBottom: 8 }}>
-                  <h3 style={{ fontSize: 13, fontWeight: 700, color: "#4b5563", margin: 0, textTransform: "uppercase" }}>Fix Expense Details</h3>
+                <div className="col-span-4" style={{ borderBottom: "1px solid #edf2f7", paddingBottom: 8, marginTop: 16, marginBottom: 8 }}>
+                  <h3 className="ucr-brand" style={{ fontSize: 13, fontWeight: 700, color: "#64748b", margin: 0, textTransform: "uppercase", letterSpacing: "0.04em" }}>Fix Expense Details</h3>
                 </div>
 
                 <FloatingInput
-                  label="MOBILE ALLOWANCE"
+                  label="Mobile Allowance"
                   type="number"
                   value={editData.mobileAllowance}
                   onChange={(e) => setEditData({ ...editData, mobileAllowance: e.target.value })}
                 />
                 <FloatingInput
-                  label="NET ALLOWANCES"
+                  label="Net Allowances"
                   type="number"
                   value={editData.netAllowance}
                   onChange={(e) => setEditData({ ...editData, netAllowance: e.target.value })}
                 />
                 <FloatingInput
-                  label="POSTAGE / STATIONARY"
+                  label="Postage / Stationary"
                   type="number"
                   value={editData.postageStationary}
                   onChange={(e) => setEditData({ ...editData, postageStationary: e.target.value })}
                 />
                 <FloatingInput
-                  label="POSTAGE / FREIGHT"
+                  label="Postage / Freight"
                   type="number"
                   value={editData.postageFreight}
                   onChange={(e) => setEditData({ ...editData, postageFreight: e.target.value })}
@@ -610,32 +820,54 @@ export default function StateWiseDA() {
               </div>
             </div>
 
-            <div className="ucr-footer" style={{ borderBottomLeftRadius: 16, borderBottomRightRadius: 16 }}>
+            <div className="dc-footer" style={{ gap: 12 }}>
               <button
                 type="button"
                 onClick={() => {
                   setEditModal(false);
                   setEditData(null);
                 }}
-                style={{
-                  height: 38, padding: "0 20px", borderRadius: 8, background: "#fff",
-                  border: "1px solid #d1d5db", color: "#4b5563", fontWeight: 600, fontSize: 13, cursor: "pointer"
-                }}
+                className="dc-delete-footer-btn"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleEditSubmit}
-                style={{
-                  height: 38, padding: "0 20px", borderRadius: 8, background: "#2563eb", color: "#fff",
-                  fontSize: 13, fontWeight: 700, border: "none", cursor: "pointer",
-                  display: "flex", alignItems: "center", gap: 8
-                }}
+                disabled={isSubmitting}
+                className="dc-submit-btn"
               >
-                <Save size={16} /> Update Record
+                {isSubmitting ? <Loader2 size={14} style={{ animation: "dc-spin 1s linear infinite" }} /> : <Save size={14} />}
+                Update Record
               </button>
             </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* ── Success Popup ── */}
+      {popup.isOpen && (
+        <div className="dc-overlay">
+          <div className="dc-popup">
+            <div style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(59,130,246,0.06)", border: "1px solid rgba(59,130,246,0.25)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
+              <Check size={28} style={{ color: "#3B82F6", strokeWidth: 2.5 }} />
+            </div>
+            <h3 className="ucr-brand" style={{ fontSize: 17, fontWeight: 700, color: "#1e293b", textAlign: "center", margin: "0 0 8px", letterSpacing: "-0.01em" }}>Success</h3>
+            <p style={{ fontSize: 13, color: "#94a3b8", textAlign: "center", margin: "0 0 24px" }}>{popup.message}</p>
+            <button
+              type="button"
+              onClick={() => setPopup({ isOpen: false, message: "" })}
+              style={{
+                background: "linear-gradient(135deg, #3B82F6, #2563eb)", color: "#fff", border: "none", borderRadius: 8,
+                padding: "10px 0", width: "100%", fontSize: 13.5, fontWeight: 600, cursor: "pointer",
+                fontFamily: "'Plus Jakarta Sans', sans-serif", boxShadow: "0 4px 14px rgba(59,130,246,0.2)", transition: "all 0.15s"
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 6px 20px rgba(59,130,246,0.3)"; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 14px rgba(59,130,246,0.2)"; }}
+            >
+              Continue
+            </button>
           </div>
         </div>
       )}
@@ -643,17 +875,12 @@ export default function StateWiseDA() {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════
-// UI Components Restyled to match Reference Exactly
-// ═══════════════════════════════════════════════════════════════════
+const pagBtnStyle = { background: "#ffffff", border: "1px solid #e2e8f0", padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", color: "#475569", fontFamily: "'Inter', sans-serif" };
 
-function FloatingInput({
-  label,
-  value,
-  onChange,
-  type = "text",
-  disabled = false,
-}) {
+// ═══════════════════════════════════════════════════════════════════
+// UI Floating Controls Input Elements
+// ═══════════════════════════════════════════════════════════════════
+function FloatingInput({ label, value, onChange, type = "text", disabled = false }) {
   const [isFocused, setIsFocused] = useState(false);
   const hasValue = value !== "" && value !== null && value !== undefined;
   const active = hasValue || isFocused;
@@ -667,21 +894,22 @@ function FloatingInput({
         disabled={disabled}
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
+        placeholder=" "
         style={{
           width: "100%", height: FH, borderRadius: 8, padding: "0 12px", fontSize: 13,
-          border: `1.5px solid ${active && !disabled ? "#2563eb" : "#d1d5db"}`, outline: "none",
-          fontWeight: 600, color: disabled ? "#6b7280" : "#111827",
-          background: disabled ? "#f3f4f6" : "#fff",
-          transition: "border-color 0.2s"
+          border: `1.5px solid ${active && !disabled ? "#3B82F6" : "#e2e8f0"}`, outline: "none",
+          fontWeight: 500, color: disabled ? "#94a3b8" : "#1e293b",
+          background: disabled ? "#f8fafc" : isFocused ? "#eff6ff" : "#fff",
+          boxShadow: isFocused && !disabled ? "0 0 0 3px rgba(59,130,246,0.15)" : "none",
+          transition: "all 0.18s ease-in-out"
         }}
       />
       <label
         style={{
-          position: "absolute", left: 10, top: active ? -9 : 12, fontSize: active ? 10 : 12,
-          fontWeight: 600, color: disabled ? "#9ca3af" : (active ? "#2563eb" : "#9ca3af"),
-          background: disabled ? (active ? "#f3f4f6" : "transparent") : "#fff",
-          padding: "0 4px", transition: "0.2s", pointerEvents: "none",
-          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "calc(100% - 20px)"
+          position: "absolute", left: 10, top: active ? 0 : "50%", transform: "translateY(-50%)", fontSize: active ? 11 : 13,
+          fontWeight: 500, color: disabled ? "#cbd5e1" : (isFocused ? "#3B82F6" : hasValue ? "#64748b" : "#94a3b8"),
+          background: active ? "#fff" : "transparent", transition: "all 0.12s ease-out", pointerEvents: "none",
+          padding: active ? "0 5px" : "0", letterSpacing: active ? "0.02em" : "0", zIndex: 20
         }}
       >
         {label}
@@ -690,8 +918,12 @@ function FloatingInput({
   );
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// MultiSelectDropdown — Portal Driven Selection Wrapper Component
+// ═══════════════════════════════════════════════════════════════════
 function MultiSelectDropdown({ label, options, selectedIds, onChange, disabled = false }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
   const ref = useRef(null);
 
   useEffect(() => {
@@ -701,6 +933,19 @@ function MultiSelectDropdown({ label, options, selectedIds, onChange, disabled =
     document.addEventListener("mousedown", handleOutsideClick);
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
+
+  const handleTriggerClick = () => {
+    if (disabled) return;
+    if (!isOpen && ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      setCoords({
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX,
+        width: rect.width,
+      });
+    }
+    setIsOpen(!isOpen);
+  };
 
   const toggleValue = (value) => {
     if (selectedIds.includes(value)) {
@@ -720,94 +965,85 @@ function MultiSelectDropdown({ label, options, selectedIds, onChange, disabled =
 
   const hasValue = selectedIds.length > 0;
   const active = isOpen || hasValue;
+  const borderColor = isOpen ? "#3B82F6" : hasValue ? "#bfdbfe" : "#e2e8f0";
+  const bgColor = disabled ? "#f8fafc" : isOpen ? "#eff6ff" : "#ffffff";
+  const shadow  = isOpen && !disabled ? "0 0 0 3px rgba(59,130,246,0.15)" : "none";
+  const labelColor = isOpen ? "#3B82F6" : hasValue ? "#64748b" : "#94a3b8";
 
   return (
-    <div ref={ref} style={{ position: "relative", width: "100%" }}>
+    <div ref={ref} style={{ position: "relative", width: "100%", userSelect: "none" }} className="dc-field-wrap">
       <div
-        onClick={() => !disabled && setIsOpen(!isOpen)}
+        onClick={handleTriggerClick}
         style={{
-          width: "100%", height: FH, borderRadius: 8, padding: "0 12px", fontSize: 13, display: "flex",
-          alignItems: "center", border: `1.5px solid ${active && !disabled ? "#2563eb" : "#d1d5db"}`,
-          cursor: disabled ? "not-allowed" : "pointer", background: disabled ? "#f3f4f6" : "#fff",
-          transition: "border-color 0.2s"
+          width: "100%", height: FH, borderRadius: 8, padding: "0 36px 0 12px", fontSize: 13, display: "flex",
+          alignItems: "center", border: `1.5px solid ${disabled ? "#f1f5f9" : borderColor}`, cursor: disabled ? "not-allowed" : "pointer",
+          background: bgColor + " !important", boxShadow: disabled ? "none" : shadow, transition: "all 0.18s", boxSizing: "border-box"
         }}
       >
-        <span style={{ flex: 1, fontWeight: 600, color: hasValue ? "#111827" : "transparent", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginRight: 8 }}>
+        <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 500, color: hasValue ? (disabled ? "#94a3b8" : "#1e293b") : "transparent", fontSize: 14 }}>
           {selectedLabel || " "}
         </span>
-        <ChevronDown size={14} style={{ color: "#9ca3af", transform: isOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "0.2s", flexShrink: 0 }} />
+        <div style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: isOpen ? "#3B82F6" : "#94a3b8", display: "flex", alignItems: "center" }}>
+          <ChevronDown size={15} style={{ transform: isOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }} />
+        </div>
       </div>
       <label
         style={{
-          position: "absolute", left: 10, top: active ? -9 : 12, fontSize: active ? 10 : 12,
-          fontWeight: 600, color: disabled ? "#9ca3af" : (active ? "#2563eb" : "#9ca3af"), background: disabled ? (active ? "#f3f4f6" : "transparent") : "#fff",
-          padding: "0 4px", transition: "0.2s", pointerEvents: "none",
-          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "calc(100% - 20px)"
+          position: "absolute", left: 10, top: active ? 0 : "50%", transform: "translateY(-50%)", fontSize: active ? 11 : 13,
+          fontWeight: 500, color: disabled ? "#cbd5e1" : labelColor, background: active ? "#ffffff" : "transparent",
+          padding: active ? "0 5px" : "0", transition: "all 0.12s ease-out", pointerEvents: "none", zIndex: 20
         }}
       >
         {label}
       </label>
 
-      {isOpen && !disabled && (
-        <div
-          style={{
-            position: "absolute", top: "110%", left: 0, width: "100%", background: "#fff",
-            border: "1px solid #e5e7eb", borderRadius: 8, boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)", zIndex: 100, overflow: "hidden"
-          }}
-        >
-          <div style={{ display: "flex", borderBottom: "1px solid #f3f4f6" }}>
+      {isOpen && !disabled && createPortal(
+        <div className="dc-portal-dropdown" style={{ position: "absolute", top: coords.top + 4, left: coords.left, width: coords.width }}>
+          <div style={{ display: "flex", borderBottom: "1px solid #edf2f7", background: "#f8fafc" }}>
             <button
               type="button"
-              onClick={selectAll}
-              style={{ flex: 1, padding: "8px 0", fontSize: 12, fontWeight: 700, color: "#fff", background: "#2563eb", border: "none", cursor: "pointer" }}
+              onMouseDown={(e) => { e.preventDefault(); selectAll(); }}
+              style={{ flex: 1, padding: "10px", fontSize: 11, fontWeight: 700, background: "transparent", color: "#2563eb", border: "none", cursor: "pointer", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
             >
               Select All
             </button>
             <button
               type="button"
-              onClick={clearAll}
-              style={{ flex: 1, padding: "8px 0", fontSize: 12, fontWeight: 700, color: "#fff", background: "#ef4444", border: "none", cursor: "pointer" }}
+              onMouseDown={(e) => { e.preventDefault(); clearAll(); }}
+              style={{ flex: 1, padding: "10px", fontSize: 11, fontWeight: 700, background: "transparent", color: "#ef4444", border: "none", cursor: "pointer", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
             >
               Clear All
             </button>
           </div>
 
-          <div style={{ maxHeight: 200, overflowY: "auto", padding: "4px 0" }}>
+          <ul style={{ maxHeight: 200, overflowY: "auto", padding: "4px 0", margin: 0, listStyle: "none", background: "#ffffff" }}>
             {options.length === 0 ? (
-              <p style={{ padding: "12px 16px", fontSize: 13, color: "#9ca3af", margin: 0 }}>No options available.</p>
+              <li style={{ padding: "12px 16px", fontSize: 12, color: "#94a3b8", fontStyle: "italic" }}>No option available</li>
             ) : (
               options.map((option) => {
                 const isSelected = selectedIds.includes(option.id || option.value);
                 return (
-                  <button
+                  <li
                     key={option.id || option.value}
-                    type="button"
-                    onClick={() => toggleValue(option.id || option.value)}
+                    className={`dc-opt${isSelected ? " selected" : ""}`}
                     style={{
-                      width: "100%", textAlign: "left", padding: "10px 16px", fontSize: 13, fontWeight: 600,
-                      display: "flex", alignItems: "center", gap: 10, background: isSelected ? "#eff6ff" : "transparent",
-                      color: isSelected ? "#2563eb" : "#4b5563", border: "none", cursor: "pointer"
+                      padding: "10px 14px", fontSize: "13.5px", borderRadius: "8px", cursor: "pointer",
+                      display: "flex", alignItems: "center", gap: "8px",
+                      color: isSelected ? "#2563eb" : "#475569",
+                      backgroundColor: isSelected ? "rgba(59,130,246,0.08)" : "#ffffff",
+                      fontWeight: isSelected ? "600" : "500"
                     }}
+                    onMouseDown={(e) => { e.preventDefault(); toggleValue(option.id || option.value); }}
                   >
-                    <span
-                      style={{
-                        width: 16, height: 16, borderRadius: 4, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
-                        border: isSelected ? "2px solid #2563eb" : "2px solid #d1d5db", background: isSelected ? "#2563eb" : "#fff"
-                      }}
-                    >
-                      {isSelected && (
-                        <svg viewBox="0 0 10 8" style={{ width: 10, height: 8 }} fill="none">
-                          <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      )}
-                    </span>
+                    <input type="checkbox" checked={isSelected} readOnly style={{ accentColor: "#3B82F6", cursor: "pointer", marginRight: 4 }} />
                     {option.label}
-                  </button>
+                  </li>
                 );
               })
             )}
-          </div>
-        </div>
+          </ul>
+        </div>,
+        document.body
       )}
     </div>
   );

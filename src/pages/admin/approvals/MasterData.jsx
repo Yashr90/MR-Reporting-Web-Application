@@ -1,86 +1,310 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import {
-  Loader2, CheckCircle2, Trash2, ChevronRight,
-  ArrowLeft, AlertCircle, Check, X, ClipboardList,
+  Loader2,
+  AlertCircle,
+  ChevronDown,
+  SlidersHorizontal,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  Check,
+  Trash2,
+  X,
+  ArrowLeft,
+  ClipboardList
 } from "lucide-react";
 import api from "../../../services/api";
 
-// ─── Global responsive styles ─────────────────────────────────────────────────
+/* ─── Premium UI Styles & Utilities ──────────────────────────────────────── */
 const STYLES = `
-  *, *::before, *::after { box-sizing: border-box; }
-  .ucr-wrap  { width:100%; padding-bottom:48px; font-family:Inter,sans-serif; overflow-x: hidden; }
-  .ucr-card  { background:#fff; border-radius:16px; box-shadow:0 1px 4px rgba(0,0,0,0.07); border:1px solid #f3f4f6; overflow:visible; margin-bottom: 24px; }
-  .ucr-header{ padding:16px 20px; border-bottom:1px solid #f3f4f6; display:flex; align-items:center; gap:12px; }
-  .ucr-body  { padding:24px; }
-  .ucr-footer{ padding:14px 24px; background:#f9fafb; border-top:1px solid #f3f4f6; display:flex; align-items:center; justify-content:flex-end; border-radius:0 0 16px 16px; flex-wrap: wrap; gap: 12px; }
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght=500;600;700;800&family=Inter:wght=400;500;600;700&display=swap');
 
-  /* Responsive Table Scroll Logic */
-  .ucr-table-container {
-    border: 1px solid #f3f4f6;
-    border-radius: 12px;
-    overflow-x: auto;
-    background: #fff;
-    -webkit-overflow-scrolling: touch;
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  .dc-wrap {
+    font-family: 'Inter', sans-serif;
+    width: 100%;
   }
-  .ucr-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 800px; }
-  .ucr-table thead { background: #f9fafb; border-bottom: 1px solid #f3f4f6; }
-  .ucr-table th { padding: 12px 16px; text-align: left; font-weight: 700; color: #6b7280; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
-  .ucr-table td { padding: 12px 16px; color: #374151; border-bottom: 1px solid #f3f4f6; white-space: nowrap; }
 
-  /* Summary inner grid (inside one card) */
+  .ucr-brand { font-family: 'Plus Jakarta Sans', sans-serif; }
+
+  /* ── Single Unified Card Container ── */
+  .dc-card {
+    background: #ffffff !important;
+    border: 1px solid #edf2f7;
+    border-radius: 16px;
+    isolation: isolate;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+    position: relative;
+    overflow: visible !important;
+    margin-bottom: 24px;
+  }
+
+  /* ── Card Header ── */
+  .dc-header {
+    padding: 24px 28px 16px;
+    background: #ffffff !important;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+    border-radius: 16px 16px 0 0 !important;
+    overflow: visible !important;
+  }
+
+  .dc-page-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #3B82F6, #2563eb);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 3px 8px rgba(59,130,246,0.2);
+    flex-shrink: 0;
+  }
+
+  /* ── Form Body ── */
+  .dc-body { 
+    padding: 20px 28px 24px; 
+    background: #ffffff !important; 
+    border-bottom-left-radius: 16px; 
+    border-bottom-right-radius: 16px;
+    overflow: visible !important;
+  }
+
+  /* ── Form Footer ── */
+  .dc-footer {
+    padding: 20px 28px 24px;
+    background: #ffffff !important;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    border-radius: 16px;
+    border-top: 1px solid #f1f5f9;
+  }
+
+  /* ── Summary Inner Grid ── */
   .ucr-summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0; }
   .ucr-summary-col  { padding: 0; }
-  .ucr-summary-divider { border-left: 1px solid #f3f4f6; }
+  .ucr-summary-divider { border-left: 1px solid #edf2f7; }
 
-  @media(max-width:900px){
+  /* ── Responsive Input Grids ── */
+  .dc-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    margin-bottom: 25px;
+  }
+
+  @media(max-width: 900px) {
     .ucr-summary-grid { grid-template-columns: 1fr; }
-    .ucr-summary-divider { border-left: none; border-top: 1px solid #f3f4f6; }
+    .ucr-summary-divider { border-left: none; border-top: 1px solid #edf2f7; }
   }
-  @media(max-width:600px){
-    .ucr-body  { padding:14px; }
-    .ucr-header { padding: 12px 16px; }
-    .ucr-footer { justify-content: center; }
+
+  @media(max-width: 640px) {
+    .dc-grid { grid-template-columns: 1fr; gap: 20px; }
+    .dc-body { padding: 20px 16px; }
+    .dc-header { padding: 20px 16px 12px; }
+    .dc-footer { padding: 16px; }
+    .dc-submit-btn, .dc-delete-footer-btn, .ucr-action-btn { width: 100% !important; justify-content: center !important; }
   }
-  @keyframes ucr-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+
+  /* ── Portal Dropdown Layer ── */
+  .dc-portal-dropdown {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12), 0 4px 12px rgba(15, 23, 42, 0.04);
+    z-index: 9999999 !important;
+    overflow: hidden;
+  }
+
+  .dc-portal-dropdown ul {
+    background: #ffffff !important;
+    max-height: 220px;
+    overflow-y: auto;
+    padding: 6px;
+    margin: 0;
+    list-style: none;
+    scrollbar-width: thin;
+    scrollbar-color: #e2e8f0 transparent;
+  }
+
+  .dc-opt {
+    padding: 10px 14px;
+    font-size: 13.5px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #475569;
+    background: #ffffff !important;
+    transition: all 0.12s;
+    font-weight: 500;
+  }
+  .dc-opt:hover   { background: rgba(59,130,246,0.06) !important; color: #2563eb; }
+  .dc-opt.selected { background: rgba(59,130,246,0.08) !important; color: #2563eb; font-weight: 600; }
+
+  /* ── Responsive Premium Table Container with Spaced Rows ── */
+  .ucr-table-container {
+    border: 1px solid #edf2f7;
+    border-radius: 12px;
+    overflow-x: auto;
+    background: #ffffff !important;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.01);
+    margin-bottom: 16px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .ucr-table { width: 100%; border-collapse: collapse; font-size: 13.5px; text-align: left; min-width: 800px; }
+  .ucr-table thead tr { position: sticky; top: 0; z-index: 10; }
+  .ucr-table thead { background: #f8fafc; }
+  
+  /* Proper, Professional Spacing Setup */
+  .ucr-table th { 
+    padding: 16px 24px; 
+    font-size: 11px; 
+    font-weight: 600; 
+    text-transform: uppercase; 
+    letter-spacing: 0.05em; 
+    color: #64748b;
+    border-bottom: 1px solid #edf2f7; 
+    white-space: nowrap;
+  }
+  .ucr-table td { 
+    padding: 16px 24px; 
+    color: #475569; 
+    border-bottom: 1px solid #f8fafc; 
+    font-weight: 500; 
+    white-space: nowrap; 
+  }
+  .ucr-table tbody tr:last-child td { border-bottom: none; }
+  .ucr-table tbody tr:hover { background: #f8fafc; }
+
+  /* ── System Error Banner ── */
+  .dc-error-banner {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 12px;
+    padding: 12px 16px;
+    color: #dc2626;
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  /* ── Action Buttons Styles ── */
+  .dc-submit-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    background: #2563eb !important;
+    color: #fff !important;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+    transition: all 0.2s;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    letter-spacing: 0.01em;
+    height: 40px;
+  }
+  .dc-submit-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.45);
+    background: #1d4ed8 !important;
+  }
+  .dc-submit-btn:disabled { background: #93c5fd !important; color: #ffffff !important; cursor: not-allowed; box-shadow: none; opacity: 0.8 !important; }
+
+  .dc-delete-footer-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    border: 1px solid #fecaca;
+    background: #ffffff !important;
+    color: #dc2626;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    height: 40px;
+  }
+  .dc-delete-footer-btn:hover:not(:disabled) {
+    background: #fef2f2 !important;
+    border-color: #fca5a5;
+  }
+  .dc-delete-footer-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .dc-overlay {
+    position: fixed; inset: 0; z-index: 1000;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(15,23,42,0.3);
+    backdrop-filter: blur(4px);
+    padding: 16px;
+  }
+
+  .dc-popup {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.1);
+    padding: 36px 32px;
+    max-width: 360px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    animation: dc-zoom 0.22s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  .dc-field-wrap { display: flex; flex-direction: column; gap: 4px; position: relative; overflow: visible !important; }
+
+  @keyframes dc-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+  @keyframes dc-zoom { from{opacity:0;transform:scale(0.88)} to{opacity:1;transform:scale(1)} }
 `;
 
-// ─── Navigation levels ────────────────────────────────────────────────────────
+const FH = 40;
+
 const LEVEL = { MAIN: "main", USER_LIST: "userList", FINAL_LIST: "finalList" };
 
-// ─── Entity config ────────────────────────────────────────────────────────────
 const ENTITIES = [
   { category: "area",     label: "Area" },
-  { category: "doctor",   label: "Doctor" },
+  { category: "doctor",    label: "Doctor" },
   { category: "provider", label: "Chemist / Stockist" },
 ];
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Main Component
-// ─────────────────────────────────────────────────────────────────────────────
 export default function MasterData() {
-  // ── Navigation ────────────────────────────────────────────────────────────
   const [level,        setLevel]        = useState(LEVEL.MAIN);
   const [reqType,      setReqType]      = useState(null);
   const [category,     setCategory]     = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
 
-  // ── Data ──────────────────────────────────────────────────────────────────
   const [counts,    setCounts]    = useState({ additions: {}, deletions: {} });
   const [userList,  setUserList]  = useState([]);
   const [finalList, setFinalList] = useState([]);
 
-  // ── UI ────────────────────────────────────────────────────────────────────
   const [isLoading,    setIsLoading]    = useState(false);
   const [error,        setError]        = useState("");
-  const [successMsg,   setSuccessMsg]   = useState("");
+  const [popup,        setPopup]        = useState({ isOpen: false, message: "" });
   const [checkedIds,   setCheckedIds]   = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // ── Reject popup ──────────────────────────────────────────────────────────
   const [rejectPopup,  setRejectPopup]  = useState(false);
   const [rejectReason, setRejectReason] = useState("");
 
-  // ── Initial fetch ─────────────────────────────────────────────────────────
   useEffect(() => { fetchCounts(); }, []);
 
   const fetchCounts = async () => {
@@ -96,15 +320,13 @@ export default function MasterData() {
     }
   };
 
-  // ── Level 1 → 2 ───────────────────────────────────────────────────────────
   const handleCountClick = async (type, cat) => {
     setReqType(type);
     setCategory(cat);
     setCheckedIds([]);
     setError("");
-    setSuccessMsg("");
+    setPopup({ isOpen: false, message: "" });
     setIsLoading(true);
-
     try {
       const res = await api.get(`/api/approvals/summary/${cat}/${type}`);
       const data = res.data?.data || res.data || [];
@@ -117,21 +339,18 @@ export default function MasterData() {
     }
   };
 
-  // ── Level 2 → 3 ───────────────────────────────────────────────────────────
   const handleUserClick = async (user) => {
     setSelectedUser(user);
     setCheckedIds([]);
     setError("");
-    setSuccessMsg("");
+    setPopup({ isOpen: false, message: "" });
     setIsLoading(true);
-
     try {
       const employeeId = user.employeeId || user.id || user.employee_id;
       const res = await api.get(
         `/api/approvals/details/${category}/${reqType}/${employeeId}`
       );
       const data = res.data?.data || res.data || [];
-      console.log("DEBUG THIRD TABLE DATA:", data[0]);
       setFinalList(Array.isArray(data) ? data : []);
       setLevel(LEVEL.FINAL_LIST);
     } catch {
@@ -141,10 +360,9 @@ export default function MasterData() {
     }
   };
 
-  // ── Back ──────────────────────────────────────────────────────────────────
   const goBack = () => {
     setError("");
-    setSuccessMsg("");
+    setPopup({ isOpen: false, message: "" });
     setCheckedIds([]);
     if (level === LEVEL.FINAL_LIST) {
       setLevel(LEVEL.USER_LIST);
@@ -157,11 +375,9 @@ export default function MasterData() {
     }
   };
 
-  // ── Checkbox ──────────────────────────────────────────────────────────────
   const toggleCheck = (id)  => setCheckedIds((p) => p.includes(id) ? p.filter((i) => i !== id) : [...p, id]);
   const toggleAll   = (ids) => setCheckedIds((p) => p.length === ids.length ? [] : ids);
 
-  // ── Refresh final list ────────────────────────────────────────────────────
   const refreshFinal = async () => {
     const employeeId = selectedUser?.employeeId || selectedUser?.id || selectedUser?.employee_id;
     const res = await api.get(`/api/approvals/details/${category}/${reqType}/${employeeId}`);
@@ -169,22 +385,19 @@ export default function MasterData() {
     setFinalList(Array.isArray(data) ? data : []);
   };
 
-  // ── Approve ───────────────────────────────────────────────────────────────
   const handleApprove = async () => {
     if (!checkedIds.length) return setError("Please select at least one record.");
     setIsSubmitting(true);
     setError("");
-
     try {
       const res = await api.post(
         `/api/approvals/approve/${category}/${reqType}`,
         checkedIds
       );
       if (res.data?.success || res.status === 200 || res.status === 201) {
-        setSuccessMsg(`${checkedIds.length} record(s) approved successfully!`);
+        setPopup({ isOpen: true, message: `${checkedIds.length} record(s) approved successfully!` });
         setCheckedIds([]);
         await refreshFinal();
-        setTimeout(() => setSuccessMsg(""), 3500);
       }
     } catch (err) {
       setError(err.response?.data?.message || "Approve failed.");
@@ -193,11 +406,9 @@ export default function MasterData() {
     }
   };
 
-  // ── Reject submit ─────────────────────────────────────────────────────────
   const handleRejectSubmit = async () => {
     if (!rejectReason.trim()) return;
     setIsSubmitting(true);
-
     try {
       const res = await api.post(
         `/api/approvals/reject/${category}/${reqType}`,
@@ -206,10 +417,9 @@ export default function MasterData() {
       if (res.data?.success || res.status === 200 || res.status === 201) {
         setRejectPopup(false);
         setRejectReason("");
-        setSuccessMsg(`${checkedIds.length} record(s) rejected.`);
+        setPopup({ isOpen: true, message: `${checkedIds.length} record(s) rejected.` });
         setCheckedIds([]);
         await refreshFinal();
-        setTimeout(() => setSuccessMsg(""), 3500);
       }
     } catch (err) {
       setError(err.response?.data?.message || "Reject failed.");
@@ -219,22 +429,19 @@ export default function MasterData() {
     }
   };
 
-  // ── Delete (deletion flow) ────────────────────────────────────────────────
   const handleDelete = async () => {
     if (!checkedIds.length) return setError("Please select at least one record.");
     setIsSubmitting(true);
     setError("");
-
     try {
       const res = await api.post(
         `/api/approvals/approve/${category}/${reqType}`,
         checkedIds
       );
       if (res.data?.success || res.status === 200 || res.status === 201) {
-        setSuccessMsg(`${checkedIds.length} record(s) deleted successfully!`);
+        setPopup({ isOpen: true, message: `${checkedIds.length} record(s) deleted successfully!` });
         setCheckedIds([]);
         await refreshFinal();
-        setTimeout(() => setSuccessMsg(""), 3500);
       }
     } catch (err) {
       setError(err.response?.data?.message || "Delete failed.");
@@ -243,7 +450,6 @@ export default function MasterData() {
     }
   };
 
-  // ── Breadcrumb ────────────────────────────────────────────────────────────
   const entityLabel = ENTITIES.find((e) => e.category === category)?.label || category;
 
   const crumbs = () => {
@@ -258,161 +464,114 @@ export default function MasterData() {
     return parts;
   };
 
-  // ─── Render ───────────────────────────────────────────────────────────────
   return (
-    <div className="ucr-wrap">
+    <div className="dc-wrap">
       <style>{STYLES}</style>
 
+      {error && (
+        <div className="dc-error-banner">
+          <AlertCircle size={15} style={{ flexShrink: 0 }} />
+          {error}
+        </div>
+      )}
+
       {/* ── Page Card Header ──────────────────────────────────────────────── */}
-      <div className="ucr-card">
-        <div className="ucr-header">
-          {level !== LEVEL.MAIN && (
-            <button
-              onClick={goBack}
-              style={{
-                width: 32, height: 32, borderRadius: 8, border: "1px solid #e5e7eb",
-                background: "#fff", display: "flex", alignItems: "center",
-                justifyContent: "center", cursor: "pointer", flexShrink: 0, color: "#6b7280",
-              }}
-            >
-              <ArrowLeft size={16} />
-            </button>
-          )}
-          <div
-            style={{
-              width: 36, height: 36, borderRadius: 10, background: "#eff6ff",
-              border: "1px solid #dbeafe", display: "flex", alignItems: "center",
-              justifyContent: "center", flexShrink: 0,
-            }}
-          >
-            <ClipboardList size={18} style={{ color: "#2563eb" }} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <h2 style={{ fontSize: 15, fontWeight: 700, color: "#111827", margin: 0 }}>
-              Approval Master
-            </h2>
-            <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 3 }}>
-              {crumbs().map((c, i) => (
-                <React.Fragment key={i}>
-                  {i > 0 && <ChevronRight size={12} style={{ color: "#d1d5db" }} />}
-                  <span
-                    style={{
-                      fontSize: 11,
-                      fontWeight: i === crumbs().length - 1 ? 700 : 400,
-                      color: i === crumbs().length - 1 ? "#2563eb" : "#9ca3af",
-                    }}
-                  >
-                    {c}
-                  </span>
-                </React.Fragment>
-              ))}
+      <div className="dc-card">
+        <div className="dc-header">
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            {level !== LEVEL.MAIN && (
+              <button
+                type="button"
+                onClick={goBack}
+                style={{
+                  width: 32, height: 32, borderRadius: 8,
+                  border: "1px solid #e2e8f0", background: "#fff",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: "pointer", flexShrink: 0, color: "#64748b", transition: "all 0.15s"
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = "#f8fafc"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "#fff"; }}
+              >
+                <ArrowLeft size={16} />
+              </button>
+            )}
+            <div className="dc-page-icon">
+              <ClipboardList size={16} color="#fff" />
+            </div>
+            <div>
+              <h1 className="ucr-brand" style={{ fontSize: 16, fontWeight: 700, color: "#1e293b", letterSpacing: "-0.01em", lineHeight: 1.2 }}>Approval Master</h1>
+              {level === LEVEL.MAIN ? (
+                <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>Review and manage master data approvals</p>
+              ) : (
+                <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 3, flexWrap: "wrap" }}>
+                  {crumbs().map((c, i) => (
+                    <React.Fragment key={i}>
+                      {i > 0 && <ChevronRight size={11} style={{ color: "#cbd5e1", flexShrink: 0 }} />}
+                      <span style={{ fontSize: 11, fontWeight: i === crumbs().length - 1 ? 700 : 400, color: i === crumbs().length - 1 ? "#2563eb" : "#94a3b8", whiteSpace: "nowrap" }}>
+                        {c}
+                      </span>
+                    </React.Fragment>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
+
+        {/* ── LEVEL 1 ── */}
+        {!isLoading && level === LEVEL.MAIN && (
+          <div className="dc-body" style={{ padding: 0 }}>
+            <div className="ucr-summary-grid">
+              <div className="ucr-summary-col">
+                <SummaryPanel
+                  title="Addition Requests"
+                  accentColor="blue"
+                  counts={counts.additions || {}}
+                  reqType="addition"
+                  entities={ENTITIES}
+                  onCountClick={handleCountClick}
+                />
+              </div>
+              <div className="ucr-summary-col ucr-summary-divider">
+                <SummaryPanel
+                  title="Deletion Requests"
+                  accentColor="red"
+                  counts={counts.deletions || {}}
+                  reqType="deletion"
+                  entities={ENTITIES}
+                  onCountClick={handleCountClick}
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Alerts */}
-      {error && (
-        <div
-          style={{
-            background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 12,
-            padding: "10px 16px", color: "#dc2626", fontSize: 13, fontWeight: 600,
-            marginBottom: 16, display: "flex", alignItems: "center", gap: 8,
-          }}
-        >
-          <AlertCircle size={16} /> {error}
-        </div>
-      )}
-      {successMsg && (
-        <div
-          style={{
-            background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 12,
-            padding: "10px 16px", color: "#16a34a", fontSize: 13, fontWeight: 600,
-            marginBottom: 16, display: "flex", alignItems: "center", gap: 8,
-          }}
-        >
-          <CheckCircle2 size={16} /> {successMsg}
-        </div>
-      )}
-
-      {/* Loader */}
       {isLoading && (
         <div style={{ display: "flex", justifyContent: "center", padding: "60px 0" }}>
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-            <Loader2
-              style={{ animation: "ucr-spin 1s linear infinite", color: "#2563eb" }}
-              size={32}
-            />
-            <p style={{ fontSize: 13, color: "#9ca3af", fontWeight: 500, margin: 0 }}>Loading…</p>
-          </div>
+          <Loader2 size={24} style={{ animation: "dc-spin 1s linear infinite", color: "#3B82F6" }} />
         </div>
       )}
 
-      {/* ══════════════════════════════════════════════════════════════
-          LEVEL 1 — Both summary panels inside ONE card
-      ══════════════════════════════════════════════════════════════ */}
-      {!isLoading && level === LEVEL.MAIN && (
-        <div className="ucr-card">
-          <div className="ucr-summary-grid">
-            {/* Addition Requests */}
-            <div className="ucr-summary-col">
-              <SummaryPanel
-                title="Addition Requests"
-                accentColor="blue"
-                counts={counts.additions || {}}
-                reqType="addition"
-                entities={ENTITIES}
-                onCountClick={handleCountClick}
-              />
-            </div>
-            {/* Deletion Requests */}
-            <div className="ucr-summary-col ucr-summary-divider">
-              <SummaryPanel
-                title="Deletion Requests"
-                accentColor="red"
-                counts={counts.deletions || {}}
-                reqType="deletion"
-                entities={ENTITIES}
-                onCountClick={handleCountClick}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ══════════════════════════════════════════════════════════════
-          LEVEL 2 — User summary table
-      ══════════════════════════════════════════════════════════════ */}
+      {/* ── LEVEL 2 ── */}
       {!isLoading && level === LEVEL.USER_LIST && (
-        <div className="ucr-card">
-          <div className="ucr-header" style={{ background: "#f9fafb" }}>
-            <div style={{ flex: 1 }}>
-              <h3 style={{ fontSize: 12, fontWeight: 700, color: "#4b5563", margin: 0 }}>
-                USER'S {entityLabel.toUpperCase()}{" "}
-                <span style={{ color: reqType === "addition" ? "#2563eb" : "#dc2626" }}>
-                  {reqType === "addition" ? "ADDITION" : "DELETION"}
-                </span>{" "}
-                REQUESTS
-              </h3>
-            </div>
+        <div className="dc-card">
+          <div className="dc-header" style={{ background: "#f8fafc" }}>
+            <h1 className="ucr-brand" style={{ fontSize: 14, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+              USER'S {entityLabel.toUpperCase()} {reqType === "addition" ? "ADDITION" : "DELETION"} REQUESTS
+            </h1>
             {userList.length > 0 && (
-              <span
-                style={{
-                  fontSize: 11, fontWeight: 700, background: "#f3f4f6",
-                  color: "#6b7280", padding: "3px 10px", borderRadius: 20,
-                }}
-              >
+              <span style={{ fontSize: 11, fontWeight: 700, background: "#edf2f7", color: "#475569", padding: "3px 10px", borderRadius: 20 }}>
                 {userList.length} user{userList.length !== 1 ? "s" : ""}
               </span>
             )}
           </div>
-
-          <div className="ucr-body">
+          <div className="dc-body">
             <div className="ucr-table-container">
               <table className="ucr-table">
                 <thead>
                   <tr>
-                    <th>SN.</th>
+                    <th style={{ width: 60, textAlign: "center" }}>SN.</th>
                     <th>State Name</th>
                     <th>Headquarter Name</th>
                     <th>User Name</th>
@@ -425,18 +584,15 @@ export default function MasterData() {
                   ) : (
                     userList.map((row, i) => (
                       <tr key={row.employeeId || i}>
-                        <td>{i + 1}</td>
-                        <td>{row.stateName || "—"}</td>
-                        <td>{row.districtName || "—"}</td>
-                        <td>{row.employeeName || "—"}</td>
+                        <td style={{ textAlign: "center", color: "#64748b" }}>{i + 1}</td>
+                        <td style={{ fontWeight: 500 }}>{row.stateName || "—"}</td>
+                        <td style={{ fontWeight: 500 }}>{row.districtName || "—"}</td>
+                        <td style={{ fontWeight: 600, color: "#1e293b" }}>{row.employeeName || "—"}</td>
                         <td style={{ textAlign: "center" }}>
                           <button
+                            type="button"
                             onClick={() => handleUserClick(row)}
-                            style={{
-                              background: "none", border: "none", color: "#2563eb",
-                              fontWeight: 700, cursor: "pointer", display: "inline-flex",
-                              alignItems: "center", gap: 4, fontSize: 13,
-                            }}
+                            style={{ background: "none", border: "none", color: "#2563eb", fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4, fontSize: 13.5 }}
                           >
                             {row.totalRequests || 0}
                             <ChevronRight size={14} />
@@ -452,34 +608,15 @@ export default function MasterData() {
         </div>
       )}
 
-      {/* ══════════════════════════════════════════════════════════════
-          LEVEL 3 — Final details table + actions
-      ══════════════════════════════════════════════════════════════ */}
+      {/* ── LEVEL 3 ── */}
       {!isLoading && level === LEVEL.FINAL_LIST && (
-        <div className="ucr-card">
-          <div className="ucr-header">
-            <div style={{ flex: 1 }}>
-              <h3 style={{ fontSize: 13, fontWeight: 700, color: "#374151", margin: 0 }}>
-                {entityLabel.toUpperCase()} REQUESTS
-                <span style={{ marginLeft: 8, color: "#9ca3af", fontWeight: 400, fontSize: 12 }}>
-                  — {selectedUser?.employeeName}
-                </span>
-              </h3>
-            </div>
-            {checkedIds.length > 0 && (
-              <span
-                style={{
-                  fontSize: 11, fontWeight: 700, background: "#eff6ff",
-                  color: "#2563eb", padding: "3px 10px", borderRadius: 20,
-                  border: "1px solid #dbeafe",
-                }}
-              >
-                {checkedIds.length} selected
-              </span>
-            )}
+        <div className="dc-card">
+          <div className="dc-header" style={{ background: "#f8fafc" }}>
+            <h1 className="ucr-brand" style={{ fontSize: 14, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+              {entityLabel.toUpperCase()} REQUESTS <span style={{ color: "#94a3b8", fontWeight: 400, fontSize: 12 }}>— {selectedUser?.employeeName}</span>
+            </h1>
           </div>
-
-          <div className="ucr-body">
+          <div className="dc-body">
             <div className="ucr-table-container">
               <FinalTable
                 category={category}
@@ -491,149 +628,99 @@ export default function MasterData() {
             </div>
           </div>
 
-          {/* Action buttons */}
-          <div className="ucr-footer">
+          <div className="dc-footer" style={{ gap: 12 }}>
+            {checkedIds.length > 0 && (
+              <span style={{ fontSize: 12, fontWeight: 700, background: "#eff6ff", color: "#2563eb", padding: "4px 12px", borderRadius: 20, border: "1px solid #dbeafe", marginRight: "auto", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                {checkedIds.length} selected
+              </span>
+            )}
             {reqType === "addition" ? (
               <>
-                <ActionBtn
-                  onClick={handleApprove}
-                  disabled={!checkedIds.length || isSubmitting}
-                  color="blue"
-                  icon={<Check size={14} />}
-                  label="Approve"
-                  loading={isSubmitting}
-                />
-                <ActionBtn
+                <button
+                  type="button"
                   onClick={() => {
                     if (!checkedIds.length) return setError("Please select at least one record.");
-                    setError("");
-                    setRejectReason("");
-                    setRejectPopup(true);
+                    setError(""); setRejectReason(""); setRejectPopup(true);
                   }}
                   disabled={!checkedIds.length || isSubmitting}
-                  color="gray"
-                  icon={<X size={14} />}
-                  label="Reject"
-                />
+                  className="dc-delete-footer-btn"
+                >
+                  <X size={14} /> Reject
+                </button>
+                <button
+                  type="button"
+                  onClick={handleApprove}
+                  disabled={!checkedIds.length || isSubmitting}
+                  className="dc-submit-btn"
+                >
+                  {isSubmitting ? <Loader2 size={14} style={{ animation: "dc-spin 1s linear infinite" }} /> : <Check size={14} />} Approve
+                </button>
               </>
             ) : (
               <>
-                <ActionBtn
-                  onClick={handleDelete}
-                  disabled={!checkedIds.length || isSubmitting}
-                  color="red"
-                  icon={<Trash2 size={14} />}
-                  label="Delete"
-                  loading={isSubmitting}
-                />
-                <ActionBtn
+                <button
+                  type="button"
                   onClick={() => {
                     if (!checkedIds.length) return setError("Please select at least one record.");
-                    setError("");
-                    setRejectReason("");
-                    setRejectPopup(true);
+                    setError(""); setRejectReason(""); setRejectPopup(true);
                   }}
                   disabled={!checkedIds.length || isSubmitting}
-                  color="gray"
-                  icon={<X size={14} />}
-                  label="Reject"
-                />
+                  className="dc-delete-footer-btn"
+                >
+                  <X size={14} /> Reject
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={!checkedIds.length || isSubmitting}
+                  className="dc-submit-btn"
+                  style={{ background: "#e11d48 !important", boxHighlight: "rgba(225,29,72,0.3)" }}
+                >
+                  {isSubmitting ? <Loader2 size={14} style={{ animation: "dc-spin 1s linear infinite" }} /> : <Trash2 size={14} />} Delete
+                </button>
               </>
             )}
           </div>
         </div>
       )}
 
-      {/* ══════════════════════════════════════════════════════════════
-          REJECT POPUP
-      ══════════════════════════════════════════════════════════════ */}
+      {/* ── REJECT POPUP ── */}
       {rejectPopup && (
-        <div
-          style={{
-            position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)",
-            display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999,
-          }}
-        >
-          <div
-            style={{
-              background: "#fff", borderRadius: 16, width: "100%", maxWidth: 420,
-              margin: "0 16px", overflow: "hidden",
-              boxShadow: "0 20px 25px -5px rgba(0,0,0,0.12)",
-            }}
-          >
-            {/* Popup header */}
-            <div
+        <div className="dc-overlay">
+          <div className="dc-popup" style={{ maxWidth: 420, padding: 24 }}>
+            <h3 className="ucr-brand" style={{ fontSize: 16, fontWeight: 700, marginBottom: 6, color: "#1e293b", width: "100%", textAlign: "left" }}>Rejection Message</h3>
+            <p style={{ fontSize: 12, color: "#94a3b8", marginBottom: 16, width: "100%", textAlign: "left" }}>Provide a reason for rejecting {checkedIds.length} record(s).</p>
+            <textarea value={rejectReason} onChange={e => setRejectReason(e.target.value)} placeholder="Type reason here…" style={{ width: "100%", height: 100, borderRadius: 8, border: "1.5px solid #e2e8f0", padding: 12, fontSize: 13, outline: "none", marginBottom: 20, resize: "none", fontFamily: "Inter, sans-serif", color: "#1e293b" }} />
+            <div style={{ display: "flex", gap: 12, justifyContent: "flex-end", width: "100%" }}>
+              <button type="button" onClick={() => { setRejectPopup(false); setRejectReason(""); }} style={{ padding: "8px 20px", border: "1.5px solid #e2e8f0", borderRadius: 8, background: "#fff", color: "#475569", fontWeight: 700, fontSize: 13, cursor: "pointer", transition: "all 0.15s", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Cancel</button>
+              <button type="button" onClick={handleRejectSubmit} disabled={!rejectReason.trim() || isSubmitting} style={{ padding: "8px 24px", background: "#ef4444", color: "#fff", border: "none", borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: "pointer", opacity: (!rejectReason.trim() || isSubmitting) ? 0.6 : 1, transition: "all 0.15s", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Reject</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── SUCCESS POPUP ── */}
+      {popup.isOpen && (
+        <div className="dc-overlay">
+          <div className="dc-popup">
+            <div style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(59,130,246,0.06)", border: "1px solid rgba(59,130,246,0.25)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
+              <Check size={28} style={{ color: "#3B82F6", strokeWidth: 2.5 }} />
+            </div>
+            <h3 className="ucr-brand" style={{ fontSize: 17, fontWeight: 700, color: "#1e293b", textAlign: "center", margin: "0 0 8px", letterSpacing: "-0.01em" }}>Success</h3>
+            <p style={{ fontSize: 13, color: "#94a3b8", textAlign: "center", margin: "0 0 24px" }}>{popup.message}</p>
+            <button
+              type="button"
+              onClick={() => setPopup({ isOpen: false, message: "" })}
               style={{
-                padding: "24px 24px 16px", textAlign: "center",
-                borderBottom: "1px solid #f3f4f6",
+                background: "linear-gradient(135deg, #3B82F6, #2563eb)", color: "#fff", border: "none", borderRadius: 8,
+                padding: "10px 0", width: "100%", fontSize: 13.5, fontWeight: 600, cursor: "pointer",
+                fontFamily: "'Plus Jakarta Sans', sans-serif", boxShadow: "0 4px 14px rgba(59,130,246,0.2)", transition: "all 0.15s"
               }}
+              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 6px 20px rgba(59,130,246,0.3)"; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 14px rgba(59,130,246,0.2)"; }}
             >
-              <div
-                style={{
-                  width: 44, height: 44, borderRadius: "50%", background: "#fef2f2",
-                  border: "2px solid #fecaca", display: "flex", alignItems: "center",
-                  justifyContent: "center", margin: "0 auto 12px",
-                }}
-              >
-                <X size={20} style={{ color: "#dc2626" }} />
-              </div>
-              <h3 style={{ fontSize: 15, fontWeight: 700, color: "#111827", margin: "0 0 4px" }}>
-                Rejection Message
-              </h3>
-              <p style={{ fontSize: 12, color: "#6b7280", margin: 0 }}>
-                Provide a reason for rejecting {checkedIds.length} record(s).
-              </p>
-            </div>
-            {/* Popup body */}
-            <div style={{ padding: "20px 24px" }}>
-              <textarea
-                rows={5}
-                placeholder="Type reason here…"
-                value={rejectReason}
-                onChange={(e) => setRejectReason(e.target.value)}
-                style={{
-                  width: "100%", borderRadius: 8, border: "1.5px solid #d1d5db",
-                  padding: "10px 12px", fontSize: 13, color: "#111827",
-                  resize: "none", outline: "none", fontFamily: "Inter, sans-serif",
-                }}
-              />
-            </div>
-            {/* Popup footer */}
-            <div
-              style={{
-                padding: "0 24px 24px", display: "flex", gap: 10, justifyContent: "center",
-              }}
-            >
-              <button
-                onClick={handleRejectSubmit}
-                disabled={!rejectReason.trim() || isSubmitting}
-                style={{
-                  display: "flex", alignItems: "center", gap: 6,
-                  padding: "8px 32px", borderRadius: 8, fontSize: 13, fontWeight: 700,
-                  border: "none", background: "#2563eb", color: "#fff",
-                  cursor: !rejectReason.trim() || isSubmitting ? "not-allowed" : "pointer",
-                  opacity: !rejectReason.trim() || isSubmitting ? 0.6 : 1,
-                }}
-              >
-                {isSubmitting && (
-                  <Loader2
-                    size={14}
-                    style={{ animation: "ucr-spin 1s linear infinite" }}
-                  />
-                )}
-                OK
-              </button>
-              <button
-                onClick={() => { setRejectPopup(false); setRejectReason(""); }}
-                style={{
-                  padding: "8px 32px", borderRadius: 8, fontSize: 13, fontWeight: 700,
-                  border: "1.5px solid #d1d5db", background: "#fff", color: "#374151",
-                  cursor: "pointer",
-                }}
-              >
-                Cancel
-              </button>
-            </div>
+              Continue
+            </button>
           </div>
         </div>
       )}
@@ -642,77 +729,55 @@ export default function MasterData() {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// SummaryPanel — no outer card; lives inside the shared ucr-card
+// SummaryPanel
 // ═══════════════════════════════════════════════════════════════════
 function SummaryPanel({ title, accentColor, counts, reqType, entities, onCountClick }) {
   const isBlue = accentColor === "blue";
 
   return (
     <div>
-      {/* Panel header */}
-      <div
-        style={{
-          padding: "14px 20px", borderBottom: "1px solid #f3f4f6",
-          display: "flex", alignItems: "center", gap: 12,
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <h3 style={{ fontSize: 13, fontWeight: 700, color: "#111827", margin: 0 }}>{title}</h3>
-        </div>
-        <span
-          style={{
-            fontSize: 10, fontWeight: 700, textTransform: "uppercase",
-            letterSpacing: "0.05em", padding: "3px 10px", borderRadius: 20,
-            background: isBlue ? "#eff6ff" : "#fef2f2",
-            color: isBlue ? "#2563eb" : "#dc2626",
-          }}
-        >
+      <div style={{ padding: "18px 24px", borderBottom: "1px solid #edf2f7", display: "flex", alignItems: "center", gap: 12 }}>
+        <h3 className="ucr-brand" style={{ fontSize: 14, fontWeight: 700, color: "#1e293b", flex: 1 }}>{title}</h3>
+        <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", padding: "3px 10px", borderRadius: 20, background: isBlue ? "rgba(59,130,246,0.06)" : "rgba(239,68,68,0.06)", color: isBlue ? "#2563eb" : "#dc2626" }}>
           {reqType}
         </span>
       </div>
 
-      {/* Panel table */}
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-        <colgroup>
-          <col style={{ width: "60%" }} />
-          <col style={{ width: "40%" }} />
-        </colgroup>
-        <thead>
-          <tr style={{ background: "#f9fafb", borderBottom: "1px solid #f3f4f6" }}>
-            <th style={{ padding: "12px 20px", textAlign: "center", fontWeight: 700, color: "#6b7280", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-              Request For
-            </th>
-            <th style={{ padding: "12px 20px", textAlign: "center", fontWeight: 700, color: "#6b7280", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-              Count
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {entities.map((entity) => (
-            <tr key={entity.category} style={{ borderBottom: "1px solid #f3f4f6" }}>
-              <td style={{ padding: "14px 20px", textAlign: "center", color: "#374151", fontWeight: 500 }}>
-                {entity.label}
-              </td>
-              <td style={{ padding: "14px 20px", textAlign: "center" }}>
-                <button
-                  onClick={() => onCountClick(reqType, entity.category)}
-                  style={{
-                    background: "none", border: "none", fontSize: 15, fontWeight: 700,
-                    cursor: "pointer", color: isBlue ? "#2563eb" : "#dc2626",
-                  }}
-                >
-                  {counts[entity.category] ?? 0}
-                </button>
-              </td>
+      <div style={{ padding: "0 12px" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13.5 }}>
+          <colgroup>
+            <col style={{ width: "60%" }} />
+            <col style={{ width: "40%" }} />
+          </colgroup>
+          <thead>
+            <tr style={{ background: "#f8fafc" }}>
+              <th style={{ padding: "14px 20px", textAlign: "center", fontWeight: 600, color: "#64748b", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em" }}>Request For</th>
+              <th style={{ padding: "14px 20px", textAlign: "center", fontWeight: 600, color: "#64748b", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em" }}>Count</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {entities.map((entity) => (
+              <tr key={entity.category} style={{ borderBottom: "1px solid #edf2f7" }}>
+                <td style={{ padding: "16px 24px", textAlign: "center", color: "#475569", fontWeight: 500 }}>{entity.label}</td>
+                <td style={{ padding: "16px 24px", textAlign: "center" }}>
+                  <button
+                    type="button"
+                    onClick={() => onCountClick(reqType, entity.category)}
+                    style={{ background: "none", border: "none", fontSize: 15, fontWeight: 700, cursor: "pointer", color: isBlue ? "#2563eb" : "#dc2626", padding: "2px 8px", borderRadius: 6 }}
+                  >
+                    {counts[entity.category] ?? 0}
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
 
-// ─── Column definitions per category ─────────────────────────────────────────
+// ─── Column Mapping matrix definitions per configuration category ───
 const COLUMNS = {
   area: [
     { key: "stateName",    label: "State Name" },
@@ -744,39 +809,16 @@ const COLUMNS = {
   ],
 };
 
-// ─── getValue — drills into nested objects from the API response ───────────────
 const getValue = (row, key) => {
   switch (key) {
     case "stateName":
-      return row.district?.state?.stateName
-          || row.district?.state?.state_name
-          || row.state?.stateName
-          || row.state?.state_name
-          || row.stateName
-          || row.state_name
-          || "—";
+      return row.district?.state?.stateName || row.district?.state?.state_name || row.state?.stateName || row.state?.state_name || row.stateName || row.state_name || "—";
     case "districtName":
-      return row.district?.districtName
-          || row.district?.district_name
-          || row.district?.name
-          || row.districtName
-          || row.district_name
-          || row.hqName
-          || "—";
+      return row.district?.districtName || row.district?.district_name || row.district?.name || row.districtName || row.district_name || row.hqName || "—";
     case "employeeName":
-      return row.employee?.name
-          || row.employee?.employeeName
-          || row.employeeName
-          || row.userName
-          || row.user_name
-          || "—";
+      return row.employee?.name || row.employee?.employeeName || row.employeeName || row.userName || row.user_name || "—";
     case "areaName":
-      return row.area?.areaName
-          || row.area?.area_name
-          || row.area?.name
-          || row.areaName
-          || row.area_name
-          || "—";
+      return row.area?.areaName || row.area?.area_name || row.area?.name || row.areaName || row.area_name || "—";
     case "areaCode":
       return row.areaCode || row.area_code || row.area?.areaCode || "—";
     case "areaType":
@@ -788,12 +830,9 @@ const getValue = (row, key) => {
     case "mslNo":
       return row.mslNo || row.msl_no || row.doctor?.mslNo || "—";
     case "providerName":
-      return row.providerName || row.provider_name
-          || row.chemistName  || row.chemist_name
-          || row.name         || "—";
+      return row.providerName || row.provider_name || row.chemistName || row.chemist_name || row.name || "—";
     case "providerCode":
-      return row.providerCode || row.provider_code
-          || row.chemistCode  || row.chemist_code || "—";
+      return row.providerCode || row.provider_code || row.chemistCode || row.chemist_code || "—";
     case "phone":
       return row.phone || row.mobile || row.mobile_no || row.mobileNo || "—";
     case "type":
@@ -807,16 +846,16 @@ const getValue = (row, key) => {
 // FinalTable
 // ═══════════════════════════════════════════════════════════════════
 function FinalTable({ category, rows, checkedIds, onToggle, onToggleAll }) {
-  const cols   = COLUMNS[category] || COLUMNS.area;
-  const allIds = rows.map((r) => r.id);
-  const allChk = allIds.length > 0 && checkedIds.length === allIds.length;
+  const cols    = COLUMNS[category] || COLUMNS.area;
+  const allIds  = rows.map((r) => r.id);
+  const allChk  = allIds.length > 0 && checkedIds.length === allIds.length;
   const someChk = checkedIds.length > 0 && !allChk;
 
   return (
     <table className="ucr-table">
       <thead>
         <tr>
-          <th style={{ width: 40, textAlign: "center" }}>
+          <th style={{ width: 60, textAlign: "center" }}>
             <IndeterminateCheckbox
               checked={allChk}
               indeterminate={someChk}
@@ -838,18 +877,20 @@ function FinalTable({ category, rows, checkedIds, onToggle, onToggleAll }) {
               <tr
                 key={row.id}
                 onClick={() => onToggle(row.id)}
-                style={{ cursor: "pointer", background: checked ? "#eff6ff" : "transparent" }}
+                style={{ background: checked ? "rgba(59, 130, 246, 0.05)" : "transparent" }}
               >
                 <td style={{ textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
                   <input
                     type="checkbox"
                     checked={checked}
                     onChange={() => onToggle(row.id)}
-                    style={{ width: 15, height: 15, cursor: "pointer", accentColor: "#2563eb" }}
+                    style={{ width: 14, height: 14, cursor: "pointer", accentColor: "#3B82F6" }}
                   />
                 </td>
                 {cols.map((c) => (
-                  <td key={c.key}>{getValue(row, c.key)}</td>
+                  <td key={c.key} style={{ color: checked ? "#2563eb" : "#475569" }}>
+                    {getValue(row, c.key)}
+                  </td>
                 ))}
               </tr>
             );
@@ -868,11 +909,12 @@ function IndeterminateCheckbox({ checked, indeterminate, onChange }) {
     <div
       onClick={(e) => { e.stopPropagation(); onChange(); }}
       style={{
-        width: 17, height: 17, borderRadius: 4,
-        border: `2px solid ${checked || indeterminate ? "#2563eb" : "#d1d5db"}`,
-        background: checked || indeterminate ? "#2563eb" : "#fff",
+        width: 16, height: 16, borderRadius: 4,
+        border: `2px solid ${checked || indeterminate ? "#3B82F6" : "#cbd5e1"}`,
+        background: checked || indeterminate ? "#3B82F6" : "#fff",
         display: "flex", alignItems: "center", justifyContent: "center",
         cursor: "pointer", margin: "0 auto", transition: "all 0.15s",
+        boxShadow: checked || indeterminate ? "0 0 0 3px rgba(59,130,246,0.12)" : "none",
       }}
     >
       {indeterminate && !checked ? (
@@ -881,10 +923,8 @@ function IndeterminateCheckbox({ checked, indeterminate, onChange }) {
         <svg viewBox="0 0 12 10" style={{ width: 10, height: 8, color: "#fff" }} fill="none">
           <path
             d="M1 5l3.5 3.5L11 1"
-            stroke="currentColor"
-            strokeWidth="2.2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+            stroke="currentColor" strokeWidth="2.5"
+            strokeLinecap="round" strokeLinejoin="round"
           />
         </svg>
       ) : null}
@@ -893,35 +933,149 @@ function IndeterminateCheckbox({ checked, indeterminate, onChange }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// ActionBtn
+// FSelect — Searchable Portal Dropdown Component
 // ═══════════════════════════════════════════════════════════════════
-function ActionBtn({ onClick, disabled, color, icon, label, loading }) {
-  const colorMap = {
-    blue: { background: "#2563eb", color: "#fff", border: "none" },
-    red:  { background: "#fff",    color: "#dc2626", border: "1px solid #fecaca" },
-    gray: { background: "#374151", color: "#fff",    border: "none" },
+function FSelect({ label, name, value, onChange, disabled, options = [] }) {
+  const [open, setOpen] = useState(false);
+  const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const h = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
+
+  const handleTriggerClick = () => {
+    if (disabled) return;
+    if (!open && ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      setCoords({
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX,
+        width: rect.width,
+      });
+    }
+    setOpen(!open);
   };
-  const s = colorMap[color] || colorMap.gray;
+
+  const selected = options.find((o) => String(o.id) === String(value));
+  const hasVal = Boolean(value);
+  const active = open || hasVal;
+  const borderColor = open ? "#3B82F6" : hasVal ? "#bfdbfe" : "#e2e8f0";
+  const bgColor = disabled ? "#f8fafc" : open ? "#eff6ff" : "#ffffff";
+  const shadow  = open && !disabled ? "0 0 0 3px rgba(59,130,246,0.15)" : "none";
+  const labelColor = open ? "#3B82F6" : hasVal ? "#64748b" : "#94a3b8";
 
   return (
+    <div ref={ref} style={{ position: "relative", width: "100%", userSelect: "none" }} className="dc-field-wrap">
+      <div
+        onClick={handleTriggerClick}
+        style={{
+          width: "100%", height: FH, borderRadius: 8, padding: "0 36px 0 12px",
+          fontSize: 13, display: "flex", alignItems: "center",
+          cursor: disabled ? "not-allowed" : "pointer", background: bgColor + " !important",
+          border: `1.5px solid ${disabled ? "#f1f5f9" : borderColor}`,
+          boxShadow: disabled ? "none" : shadow, transition: "all 0.18s", boxSizing: "border-box",
+        }}
+      >
+        <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 500, color: hasVal ? (disabled ? "#94a3b8" : "#1e293b") : "transparent", fontSize: 14 }}>
+          {selected?.label || " "}
+        </span>
+        <div style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: open ? "#3B82F6" : "#94a3b8", transition: "all 0.2s" }}>
+          <ChevronDown size={15} style={{ transform: open ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.2s" }} />
+        </div>
+      </div>
+      <label
+        style={{
+          position: "absolute", left: 10, pointerEvents: "none", zIndex: 20,
+          transition: "all 0.12s ease-out", fontWeight: 500, top: active ? "0" : "50%",
+          transform: active ? "translateY(-50%)" : "translateY(-50%)", fontSize: active ? 11 : 13,
+          color: disabled ? "#cbd5e1" : labelColor, background: active ? "#ffffff" : "transparent",
+          padding: active ? "0 5px" : "0", letterSpacing: active ? "0.02em" : "0",
+        }}
+      >
+        {label}
+      </label>
+      {open && !disabled && createPortal(
+        <div className="dc-portal-dropdown" style={{ position: "absolute", top: coords.top + 4, left: coords.left, width: coords.width }}>
+          <ul style={{ maxHeight: 200, overflowY: "auto", margin: 0, padding: "4px 0", listStyle: "none", background: "#ffffff" }}>
+            {options.length === 0 && <li style={{ padding: "12px", fontSize: 12, color: "#94a3b8", fontStyle: "italic" }}>No options available</li>}
+            {options.map((opt) => (
+              <li
+                key={opt.id}
+                className={`dc-opt${String(value) === String(opt.id) ? " selected" : ""}`}
+                style={{
+                  padding: "10px 14px", fontSize: "13.5px", borderRadius: "8px", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px",
+                  color: String(value) === String(opt.id) ? "#2563eb" : "#475569",
+                  backgroundColor: String(value) === String(opt.id) ? "rgba(59,130,246,0.08)" : "#ffffff",
+                  fontWeight: String(value) === String(opt.id) ? "600" : "500"
+                }}
+                onMouseDown={(e) => { 
+                  e.preventDefault(); 
+                  onChange({ target: { name, value: String(opt.id) } }); 
+                  setOpen(false); 
+                }}
+              >
+                {String(value) === String(opt.id) && <Check size={12} style={{ color: "#3B82F6", flexShrink: 0 }} />}
+                {opt.label}
+              </li>
+            ))}
+          </ul>
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+}
+
+// ─── PaginationFooter ─────────────────────────────────────────────────────────
+function PaginationFooter({ data, page, pageSize, setPage, setPageSize }) {
+  const totalPages = Math.max(1, Math.ceil(data.length / pageSize));
+  const from = data.length === 0 ? 0 : (page - 1) * pageSize + 1;
+  const to = Math.min(page * pageSize, data.length);
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 12, padding: "12px 16px", borderTop: "1px solid #edf2f7", background: "#f8fafc", fontSize: 12, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <span style={{ color: "#64748b" }}>Items per page:</span>
+        <select
+          value={pageSize}
+          onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+          style={{ border: "1px solid #e2e8f0", borderRadius: 6, padding: "2px 8px", outline: "none", cursor: "pointer", color: "#475569", background: "#ffffff", fontFamily: "'Inter', sans-serif" }}
+        >
+          {PAGE_SIZES.map((s) => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
+      </div>
+      <span style={{ color: "#64748b", fontWeight: 600, fontFamily: "'Inter', sans-serif" }}>
+        {from} – {to} of {data.length}
+      </span>
+      <div style={{ display: "flex", gap: 4 }}>
+        <NavBtn icon={<ChevronsLeft size={13} />} onClick={() => setPage(1)} disabled={page === 1} />
+        <NavBtn icon={<ChevronLeft size={13} />} onClick={() => setPage(page - 1)} disabled={page === 1} />
+        <NavBtn icon={<ChevronRight size={13} />} onClick={() => setPage(page + 1)} disabled={page === totalPages} />
+        <NavBtn icon={<ChevronsRight size={13} />} onClick={() => setPage(totalPages)} disabled={page === totalPages} />
+      </div>
+    </div>
+  );
+}
+
+// ─── NavBtn ───────────────────────────────────────────────────────────────────
+function NavBtn({ icon, onClick, disabled }) {
+  return (
     <button
+      type="button"
       onClick={onClick}
       disabled={disabled}
-      style={{
-        display: "flex", alignItems: "center", gap: 6,
-        padding: "8px 24px", borderRadius: 8, fontSize: 13, fontWeight: 700,
-        background: disabled ? "#f3f4f6" : s.background,
-        color: disabled ? "#9ca3af" : s.color,
-        border: disabled ? "none" : s.border,
-        cursor: disabled ? "not-allowed" : "pointer",
-        opacity: disabled ? 0.7 : 1,
-        minWidth: 100,
-      }}
+      style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 6, width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", cursor: disabled ? "not-allowed" : "pointer", color: "#475569", opacity: disabled ? 0.4 : 1, transition: "all 0.15s" }}
+      onMouseEnter={e => { if (!disabled) e.currentTarget.style.background = "#f8fafc"; }}
+      onMouseLeave={e => { if (!disabled) e.currentTarget.style.background = "#ffffff"; }}
     >
-      {loading
-        ? <Loader2 size={14} style={{ animation: "ucr-spin 1s linear infinite" }} />
-        : icon}
-      {label}
+      {icon}
     </button>
   );
 }
@@ -930,12 +1084,9 @@ function ActionBtn({ onClick, disabled, color, icon, label, loading }) {
 function EmptyRow({ cols }) {
   return (
     <tr>
-      <td
-        colSpan={cols}
-        style={{ padding: "48px 16px", textAlign: "center", color: "#9ca3af", fontSize: 13 }}
-      >
+      <td colSpan={cols} style={{ padding: "48px 16px", textAlign: "center", color: "#94a3b8", fontStyle: "italic" }}>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-          <ClipboardList size={28} style={{ color: "#d1d5db" }} />
+          <ClipboardList size={28} style={{ color: "#cbd5e2" }} />
           <p style={{ margin: 0, fontWeight: 500 }}>No records found.</p>
         </div>
       </td>

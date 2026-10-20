@@ -1,80 +1,271 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
-  Loader2,
-  AlertCircle,
-  ChevronDown,
-  Check,
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
-  Users,
-  Save
+  Loader2, AlertCircle, CheckCircle2, ChevronDown,
+  Check, Users, Save, ChevronLeft, ChevronRight
 } from "lucide-react";
 import api from "../../../services/api";
 
-// ─── Global responsive styles (from reference) ───────────────────────────────
-const STYLES = `
-  *, *::before, *::after { box-sizing: border-box; }
-  .ucr-wrap  { width:100%; padding-bottom:48px; font-family:Inter,sans-serif; overflow-x: hidden; }
-  .ucr-card  { background:#fff; border-radius:16px; box-shadow:0 1px 4px rgba(0,0,0,0.07); border:1px solid #f3f4f6; overflow:visible; margin-bottom: 24px; }
-  .ucr-header{ padding:16px 20px; border-bottom:1px solid #f3f4f6; display:flex; align-items:center; gap:12px; }
-  .ucr-body  { padding:24px; }
-  .ucr-footer{ padding:14px 24px; background:#f9fafb; border-top:1px solid #f3f4f6; display:flex; align-items:center; justify-content:flex-end; border-radius:0 0 16px 16px; flex-wrap: wrap; gap: 12px; }
+// ─── Constants ──────────────────────────────────────────────────────────────
+const PAGE_SIZES = [5, 10, 20];
+const FH = 40;
 
-  /* Responsive Table Scroll Logic */
+/* ─── Premium UI Styles & Utilities ──────────────────────────────────────── */
+const STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght=500;600;700;800&family=Inter:wght=400;500;600;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  .dc-wrap {
+    font-family: 'Inter', sans-serif;
+    width: 100%;
+  }
+
+  .ucr-brand { font-family: 'Plus Jakarta Sans', sans-serif; }
+
+  /* ── Single Unified Card Container ── */
+  .dc-card {
+    background: #ffffff !important;
+    border: 1px solid #edf2f7;
+    border-radius: 16px;
+    isolation: isolate;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+    position: relative;
+    overflow: visible !important;
+    margin-bottom: 24px;
+  }
+
+  /* ── Card Header ── */
+  .dc-header {
+    padding: 24px 28px 16px;
+    background: #ffffff !important;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+    border-radius: 16px 16px 0 0 !important;
+    overflow: visible !important;
+  }
+
+  .dc-page-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #3B82F6, #2563eb);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 3px 8px rgba(59,130,246,0.2);
+    flex-shrink: 0;
+  }
+
+  /* ── Form Body ── */
+  .dc-body { 
+    padding: 20px 28px 24px; 
+    background: #ffffff !important; 
+    border-bottom-left-radius: 16px; 
+    border-bottom-right-radius: 16px;
+    overflow: visible !important;
+  }
+
+  /* ── Form Footer ── */
+  .dc-footer {
+    padding: 20px 28px 24px;
+    background: #ffffff !important;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    border-radius: 16px;
+    border-top: 1px solid #f1f5f9;
+  }
+
+  /* ── Responsive Input Grids ── */
+  .ucr-grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+
+  @media(max-width: 991px) {
+    .ucr-grid-2 { grid-template-columns: 1fr !important; gap: 24px; }
+    .left-filter-col { border-right: none !important; border-bottom: 1px solid #edf2f7; padding-bottom: 24px !important; }
+  }
+  @media(max-width: 640px) {
+    .dc-body { padding: 20px 16px; }
+    .dc-header { padding: 20px 16px 12px; }
+    .dc-footer { padding: 16px; }
+    .dc-submit-btn { width: auto !important; }
+  }
+
+  /* ── Portal Dropdown Layer ── */
+  .dc-portal-dropdown {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12), 0 4px 12px rgba(15, 23, 42, 0.04);
+    z-index: 9999999 !important;
+    overflow: hidden;
+  }
+
+  .dc-portal-dropdown ul {
+    background: #ffffff !important;
+    max-height: 220px;
+    overflow-y: auto;
+    padding: 6px;
+    margin: 0;
+    list-style: none;
+    scrollbar-width: thin;
+    scrollbar-color: #e2e8f0 transparent;
+  }
+
+  .dc-opt {
+    padding: 10px 14px;
+    font-size: 13.5px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #475569;
+    background: #ffffff !important;
+    transition: all 0.12s;
+    font-weight: 500;
+  }
+  .dc-opt:hover   { background: rgba(59,130,246,0.06) !important; color: #2563eb; }
+  .dc-opt.selected { background: rgba(59,130,246,0.08) !important; color: #2563eb; font-weight: 600; }
+
+  /* ── Premium Compact Table Container ── */
   .ucr-table-container {
-    border: 1px solid #f3f4f6;
+    border: 1px solid #edf2f7;
     border-radius: 12px;
     overflow-x: auto;
-    background: #fff;
+    background: #ffffff !important;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.01);
+    margin-bottom: 16px;
     -webkit-overflow-scrolling: touch;
     width: 100%;
   }
-  .ucr-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 400px; }
-  .ucr-table thead { background: #f9fafb; border-bottom: 1px solid #f3f4f6; }
-  .ucr-table th { padding: 12px 16px; text-align: left; font-weight: 700; color: #6b7280; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
-  .ucr-table td { padding: 12px 16px; color: #374151; border-bottom: 1px solid #f3f4f6; white-space: nowrap; }
 
-  .ucr-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:20px; margin-bottom:24px; }
-  .ucr-grid-2 { display:grid; grid-template-columns:repeat(2,1fr); gap:20px; margin-bottom:24px; }
-  .ucr-grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:20px; margin-bottom:24px; }
-
-  /* Responsive Col Spans */
-  .col-span-2 { grid-column: span 2; }
-  .col-span-4 { grid-column: span 4; }
-
-  @media(max-width:1024px){
-    .ucr-grid, .ucr-grid-4, .ucr-grid-2 { grid-template-columns:repeat(2,1fr); gap:16px; }
-    .col-span-4 { grid-column: span 2; }
+  /* Clean grey layout scrollbar underneath selection tables */
+  .ucr-table-container::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
   }
-  @media(max-width:768px){
-    .ucr-grid, .ucr-grid-4, .ucr-grid-2 { grid-template-columns:1fr; gap:16px; }
-    .col-span-2, .col-span-4 { grid-column: span 1 !important; }
-    .ucr-body  { padding:16px; }
-    .ucr-header { padding: 16px; flex-direction: column; align-items: flex-start; }
-    .ucr-header > div { width: 100%; }
-    .ucr-header > button { align-self: flex-end; margin-top: -30px; }
-    .ucr-footer { justify-content: center; }
+  .ucr-table-container::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 100px;
   }
-  @keyframes ucr-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+  .ucr-table-container::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 100px;
+    border: 2px solid #f1f5f9;
+  }
+  .ucr-table-container::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+
+  .ucr-table { width: 100%; border-collapse: collapse; font-size: 13.5px; text-align: left; min-width: 500px; }
+  .ucr-table thead tr { position: sticky; top: 0; z-index: 10; }
+  .ucr-table thead { background: #f8fafc; }
+  
+  .ucr-table th { 
+    padding: 12px 16px; 
+    font-size: 11px; 
+    font-weight: 600; 
+    text-transform: uppercase; 
+    letter-spacing: 0.05em; 
+    color: #64748b;
+    border-bottom: 1px solid #edf2f7; 
+    white-space: nowrap;
+  }
+  .ucr-table td { 
+    padding: 11px 16px; 
+    color: #475569; 
+    border-bottom: 1px solid #f8fafc; 
+    font-weight: 500; 
+    white-space: nowrap; 
+  }
+  .ucr-table tbody tr:last-child td { border-bottom: none; }
+  .ucr-table tbody tr:hover { background: #f8fafc; }
+
+  /* ── System Error Banner ── */
+  .dc-error-banner {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 12px;
+    padding: 12px 16px;
+    color: #dc2626;
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  /* ── Action Buttons ── */
+  .dc-submit-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    background: #2563eb !important;
+    color: #fff !important;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+    transition: all 0.2s;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    letter-spacing: 0.01em;
+    height: 40px;
+  }
+  .dc-submit-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.45);
+    background: #1d4ed8 !important;
+  }
+  .dc-submit-btn:disabled { background: #93c5fd !important; color: #ffffff !important; cursor: not-allowed; box-shadow: none; opacity: 0.8 !important; }
+
+  .dc-overlay {
+    position: fixed; inset: 0; z-index: 1000;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(15,23,42,0.3);
+    backdrop-filter: blur(4px);
+    padding: 16px;
+  }
+
+  .dc-popup {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.1);
+    padding: 36px 32px;
+    max-width: 360px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    animation: dc-zoom 0.22s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  .dc-field-wrap { display: flex; flex-direction: column; gap: 4px; position: relative; overflow: visible !important; }
+
+  @keyframes dc-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+  @keyframes dc-zoom { from{opacity:0;transform:scale(0.88)} to{opacity:1;transform:scale(1)} }
 `;
-
-const FH = 40;
 
 export default function UserStockistMapping() {
   // ─── App State ───────────────────────────────────────────────────────────────
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [successMsg, setSuccessMsg] = useState("");
+  const [popup, setPopup] = useState({ isOpen: false, message: "" });
 
-  // Loading states for individual tables
   const [isLeftLoading, setIsLeftLoading] = useState(false);
   const [isRightLoading, setIsRightLoading] = useState(false);
 
-  // ─── Master State (Common) ───────────────────────────────────────────────────
   const [statesList, setStatesList] = useState([]);
 
-  // ─── Left Side State (Stockist Mapping) ──────────────────────────────────────
+  // Left Filter Selection states
   const [leftFilters, setLeftFilters] = useState({ stateId: "", districtIds: [] });
   const [leftDistricts, setLeftDistricts] = useState([]);
   const [stockists, setStockists] = useState([]);
@@ -83,7 +274,7 @@ export default function UserStockistMapping() {
   const [leftPage, setLeftPage] = useState(1);
   const [leftPageSize, setLeftPageSize] = useState(5);
 
-  // ─── Right Side State (Employee Selection) ───────────────────────────────────
+  // Right Filter Selection states
   const [rightFilters, setRightFilters] = useState({ stateId: "", districtIds: [] });
   const [rightDistricts, setRightDistricts] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -92,14 +283,10 @@ export default function UserStockistMapping() {
   const [rightPage, setRightPage] = useState(1);
   const [rightPageSize, setRightPageSize] = useState(5);
 
-  const PAGE_SIZES = [5, 10, 20];
-
-  // ─── Helper for Auth Headers ─────────────────────────────────────────────────
   const getAuthHeaders = useCallback(() => ({
     headers: { Authorization: `Bearer ${sessionStorage.getItem("token")}` }
   }), []);
 
-  // ─── 1. Fetch States on Mount ────────────────────────────────────────────────
   useEffect(() => {
     const fetchStates = async () => {
       try {
@@ -115,7 +302,6 @@ export default function UserStockistMapping() {
     fetchStates();
   }, [getAuthHeaders]);
 
-  // ─── 2. Left Side Fetching Logic (Stockists) ─────────────────────────────────
   useEffect(() => {
     if (leftFilters.stateId) {
       setLeftFilters(prev => ({ ...prev, districtIds: [] }));
@@ -134,19 +320,16 @@ export default function UserStockistMapping() {
   useEffect(() => {
     if (leftFilters.districtIds.length > 0) {
       setIsLeftLoading(true);
-      
       const query = `districtIds=${leftFilters.districtIds.join(',')}`;
       
       api.get(`/api/masters/stockist-mappings/stockists?stateId=${leftFilters.stateId}&${query}`, getAuthHeaders())
         .then(res => {
           const data = res.data?.data || res.data || [];
-          
           setStockists(Array.isArray(data) ? data.map(s => ({
             id: String(s.stockistId ?? s.id ?? s.partyId ?? s.providerId ?? ""), 
             headquarterName: s.headquarterName || s.hqName || "Unknown HQ",
             stockistName: s.providerName || s.stockistName || s.stockist_name || s.partyName || s.name || "Unknown"
           })).filter(s => s.id !== "") : []); 
-          
           setLeftPage(1);
         }).catch(err => {
           console.error("Stockist fetch error", err);
@@ -160,7 +343,6 @@ export default function UserStockistMapping() {
     }
   }, [leftFilters.districtIds, leftFilters.stateId, getAuthHeaders]);
 
-  // ─── 3. Right Side Fetching Logic (Employees) ────────────────────────────────
   useEffect(() => {
     if (rightFilters.stateId) {
       setRightFilters(prev => ({ ...prev, districtIds: [] }));
@@ -179,7 +361,6 @@ export default function UserStockistMapping() {
   useEffect(() => {
     if (rightFilters.districtIds.length > 0) {
       setIsRightLoading(true);
-      
       const query = `districtIds=${rightFilters.districtIds.join(',')}`;
       const stockistQuery = selectedStockistId ? `&stockistId=${selectedStockistId}` : "";
       
@@ -223,7 +404,6 @@ export default function UserStockistMapping() {
     }
   }, [rightFilters.districtIds, rightFilters.stateId, selectedStockistId, getAuthHeaders]);
 
-  // ─── 4. Handlers ─────────────────────────────────────────────────────────────
   const toggleEmployeeSelection = (id) => {
     setSelectedEmployeeIds(prev => 
       prev.includes(id) ? prev.filter(empId => empId !== id) : [...prev, id]
@@ -242,7 +422,7 @@ export default function UserStockistMapping() {
     if (!selectedStockistId) return setError("Please select a Stockist to map.");
 
     setIsSubmitting(true);
-    setError(""); setSuccessMsg("");
+    setError(""); 
 
     try {
       const payload = {
@@ -251,11 +431,7 @@ export default function UserStockistMapping() {
       };
 
       await api.put("/api/masters/stockist-mappings/map", payload, getAuthHeaders());
-      
-      setSuccessMsg("Stockist mapped successfully!");
-      setTimeout(() => {
-        setSuccessMsg("");
-      }, 4000);
+      setPopup({ isOpen: true, message: "Stockist mapped successfully!" });
       
     } catch (err) {
       setError(err.response?.data?.message || "Failed to map stockist.");
@@ -264,7 +440,6 @@ export default function UserStockistMapping() {
     }
   };
 
-  // ─── Pagination Logic ────────────────────────────────────────────────────────
   const leftTotalPages = Math.max(1, Math.ceil(stockists.length / leftPageSize));
   const pagedStockists = stockists.slice((leftPage - 1) * leftPageSize, leftPage * leftPageSize);
   const goToLeftPage = (page) => setLeftPage(Math.min(Math.max(1, page), leftTotalPages));
@@ -273,54 +448,49 @@ export default function UserStockistMapping() {
   const pagedEmployees = employees.slice((rightPage - 1) * rightPageSize, rightPage * rightPageSize);
   const goToRightPage = (page) => setRightPage(Math.min(Math.max(1, page), rightTotalPages));
 
-  const stateOpts = statesList.map(s => ({ id: String(s.id), value: String(s.id), label: s.stateName }));
+  const stateOpts = statesList.map(s => ({ value: String(s.id), label: s.stateName }));
 
   return (
-    <div className="ucr-wrap">
+    <div className="dc-wrap">
       <style>{STYLES}</style>
 
-      {/* Alerts */}
       {error && (
-        <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 12, padding: "10px 16px", color: "#dc2626", fontSize: 13, fontWeight: 600, marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
-          <AlertCircle size={16} /> {error}
-        </div>
-      )}
-      {successMsg && (
-        <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 12, padding: "10px 16px", color: "#16a34a", fontSize: 13, fontWeight: 600, marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
-          <CheckCircle2 size={16} /> {successMsg}
+        <div className="dc-error-banner">
+          <AlertCircle size={15} style={{ flexShrink: 0 }} />
+          {error}
         </div>
       )}
 
-      {/* Main Header / Card */}
-      <div className="ucr-card">
-        <div className="ucr-header">
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: "#eff6ff", border: "1px solid #dbeafe", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Users size={17} style={{ color: "#2563eb" }} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <h2 style={{ fontSize: 15, fontWeight: 700, color: "#111827", margin: 0 }}>User-Stockist Mapping</h2>
-            <p style={{ fontSize: 11, color: "#6b7280", margin: 0, marginTop: 2 }}>
-              Map stockists to employees across states and districts
-            </p>
+      {/* Main Header Card */}
+      <div className="dc-card">
+        <div className="dc-header">
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div className="dc-page-icon">
+              <Users size={16} color="#fff" />
+            </div>
+            <div>
+              <h1 className="ucr-brand" style={{ fontSize: 16, fontWeight: 700, color: "#1e293b", letterSpacing: "-0.01em", lineHeight: 1.2 }}>User-Stockist Mapping</h1>
+              <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>Map stockists to employees across states and districts</p>
+            </div>
           </div>
         </div>
 
-        <div className="ucr-body" style={{ padding: 0 }}>
-          <div className="ucr-grid-2" style={{ margin: 0, gap: 0 }}>
-            {/* Left Filter */}
-            <div style={{ padding: 24, borderRight: "1px solid #f3f4f6" }}>
+        <div className="dc-body" style={{ padding: 0 }}>
+          <div className="ucr-grid-2">
+            {/* Left Filter col */}
+            <div className="left-filter-col" style={{ padding: 24, borderRight: "1px solid #edf2f7" }}>
               <div style={{ marginBottom: 16 }}>
-                <h3 style={{ fontSize: 13, fontWeight: 700, color: "#4b5563", margin: 0, textTransform: "uppercase" }}>Filter For Stockist Selection</h3>
+                <h3 className="ucr-brand" style={{ fontSize: 13, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em" }}>Filter For Stockist Selection</h3>
               </div>
-              <div className="ucr-grid-2" style={{ marginBottom: 0 }}>
+              <div className="ucr-grid-2">
                 <SingleDropdown 
-                  label="SELECT STATE *" 
+                  label="Select State" 
                   options={stateOpts} 
                   value={leftFilters.stateId} 
                   onSelect={(v) => setLeftFilters(prev => ({ ...prev, stateId: v }))} 
                 />
                 <MultiSelectDropdown 
-                  label="SELECT DISTRICT *" 
+                  label="Select District" 
                   options={leftDistricts} 
                   selectedIds={leftFilters.districtIds} 
                   onChange={(v) => setLeftFilters(prev => ({ ...prev, districtIds: v }))} 
@@ -329,20 +499,20 @@ export default function UserStockistMapping() {
               </div>
             </div>
 
-            {/* Right Filter */}
+            {/* Right Filter col */}
             <div style={{ padding: 24 }}>
               <div style={{ marginBottom: 16 }}>
-                <h3 style={{ fontSize: 13, fontWeight: 700, color: "#4b5563", margin: 0, textTransform: "uppercase" }}>Filter For Employee Selection</h3>
+                <h3 className="ucr-brand" style={{ fontSize: 13, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em" }}>Filter For Employee Selection</h3>
               </div>
-              <div className="ucr-grid-2" style={{ marginBottom: 0 }}>
+              <div className="ucr-grid-2">
                 <SingleDropdown 
-                  label="SELECT STATE *" 
+                  label="Select State" 
                   options={stateOpts} 
                   value={rightFilters.stateId} 
                   onSelect={(v) => setRightFilters(prev => ({ ...prev, stateId: v }))} 
                 />
                 <MultiSelectDropdown 
-                  label="SELECT DISTRICT *" 
+                  label="Select District" 
                   options={rightDistricts} 
                   selectedIds={rightFilters.districtIds} 
                   onChange={(v) => setRightFilters(prev => ({ ...prev, districtIds: v }))} 
@@ -355,16 +525,16 @@ export default function UserStockistMapping() {
       </div>
 
       <div className="ucr-grid-2">
-        {/* LEFT TABLE: Stockists */}
-        {leftFilters.stateId && leftFilters.districtIds.length > 0 ? (
-          <div className="ucr-card" style={{ marginBottom: 0, minWidth: 0, display: "flex", flexDirection: "column" }}>
-            <div className="ucr-header" style={{ background: "#f9fafb" }}>
-              <h3 style={{ fontSize: 14, fontWeight: 700, color: "#374151", margin: 0 }}>Stockist's To Be Mapped</h3>
+        {/* LEFT TABLE: Stockists Dashboard Layout */}
+        {leftFilters.stateId && leftFilters.districtIds.length > 0 && (
+          <div className="dc-card" style={{ marginBottom: 0, minWidth: 0, display: "flex", flexDirection: "column" }}>
+            <div className="dc-header" style={{ background: "#f8fafc" }}>
+              <h3 className="ucr-brand" style={{ fontSize: 14, fontWeight: 700, color: "#475569" }}>Stockist's To Be Mapped</h3>
             </div>
             
-            <div className="ucr-body" style={{ padding: 0, flex: 1, display: "flex", flexDirection: "column" }}>
+            <div className="dc-body" style={{ padding: 0, flex: 1, display: "flex", flexDirection: "column" }}>
               <div className="ucr-table-container" style={{ border: "none", borderRadius: 0, flex: 1 }}>
-                <table className="ucr-table" style={{ minWidth: 400 }}>
+                <table className="ucr-table" style={{ minWidth: 500 }}>
                   <thead>
                     <tr>
                       <th style={{ width: 60, textAlign: "center" }}>Select</th>
@@ -376,12 +546,12 @@ export default function UserStockistMapping() {
                     {isLeftLoading ? (
                       <tr>
                         <td colSpan={3} style={{ textAlign: "center", padding: 40 }}>
-                          <Loader2 style={{ animation: "ucr-spin 1s linear infinite", margin: "0 auto", color: "#2563eb" }} size={24} />
+                          <Loader2 style={{ animation: "dc-spin 1s linear infinite", margin: "0 auto", color: "#3B82F6" }} size={20} />
                         </td>
                       </tr>
                     ) : stockists.length === 0 ? (
                       <tr>
-                        <td colSpan={3} style={{ textAlign: "center", padding: 40, color: "#9ca3af" }}>
+                        <td colSpan={3} style={{ textAlign: "center", padding: 40, color: "#94a3b8", fontStyle: "italic" }}>
                           No stockists found for the selected filters.
                         </td>
                       </tr>
@@ -390,19 +560,19 @@ export default function UserStockistMapping() {
                         <tr 
                           key={row.id} 
                           onClick={() => setSelectedStockistId(row.id)}
-                          style={{ 
-                            cursor: "pointer", 
-                            background: selectedStockistId === row.id ? "#eff6ff" : "transparent"
-                          }}
+                          style={{ background: selectedStockistId === row.id ? "rgba(59, 130, 246, 0.05)" : "transparent" }}
                         >
-                          <td style={{ textAlign: "center" }}>
-                            <div style={{ 
-                              width: 16, height: 16, borderRadius: "50%", margin: "0 auto",
-                              border: selectedStockistId === row.id ? "5px solid #2563eb" : "2px solid #d1d5db",
-                              background: "#fff"
-                            }} />
+                          <td style={{ textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
+                            <div 
+                              onClick={() => setSelectedStockistId(row.id)}
+                              style={{ 
+                                width: 16, height: 16, borderRadius: "50%", margin: "0 auto", cursor: "pointer",
+                                border: selectedStockistId === row.id ? "5px solid #3B82F6" : "2px solid #cbd5e1",
+                                background: "#fff", transition: "all 0.15s"
+                              }} 
+                            />
                           </td>
-                          <td style={{ fontWeight: 600 }}>{row.headquarterName}</td>
+                          <td style={{ fontWeight: 600, color: "#1e293b" }}>{row.headquarterName}</td>
                           <td style={{ fontWeight: 600, color: "#2563eb" }}>{row.stockistName}</td>
                         </tr>
                       ))
@@ -411,71 +581,62 @@ export default function UserStockistMapping() {
                 </table>
               </div>
               
-              {/* Pagination */}
               {stockists.length > 0 && (
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderTop: "1px solid #f3f4f6", background: "#f9fafb", fontSize: 11, flexWrap: "wrap", gap: 12 }}>
-                  <div style={{ color: "#6b7280" }}>
-                    Showing <span style={{ fontWeight: 700, color: "#374151" }}>{pagedStockists.length === 0 ? 0 : (leftPage - 1) * leftPageSize + 1}</span> to <span style={{ fontWeight: 700, color: "#374151" }}>{Math.min(leftPage * leftPageSize, stockists.length)}</span> of <span style={{ fontWeight: 700, color: "#374151" }}>{stockists.length}</span> entries
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderTop: "1px solid #edf2f7", background: "#f8fafc", fontSize: 12, flexWrap: "wrap", gap: 12 }}>
+                  <div style={{ color: "#64748b" }}>
+                    Showing <span style={{ fontWeight: 700, color: "#1e293b" }}>{(leftPage - 1) * leftPageSize + 1}</span> to <span style={{ fontWeight: 700, color: "#1e293b" }}>{Math.min(leftPage * leftPageSize, stockists.length)}</span> of <span style={{ fontWeight: 700, color: "#1e293b" }}>{stockists.length}</span> entries
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <select
                       value={leftPageSize}
-                      onChange={(e) => { setLeftPageSize(Number(e.target.value)); setLeftPage(1); }}
-                      style={{ border: "1px solid #d1d5db", borderRadius: 4, padding: "2px 6px" }}
+                      onChange={(e) => { leftPageSize(Number(e.target.value)); setLeftPage(1); }}
+                      style={{ border: "1px solid #e2e8f0", borderRadius: 6, padding: "2px 8px", outline: "none", cursor: "pointer", color: "#475569", background: "#ffffff", fontFamily: "'Inter', sans-serif" }}
                     >
                       {PAGE_SIZES.map((s) => (<option key={s} value={s}>{s}</option>))}
                     </select>
-                    <button
-                      onClick={() => goToLeftPage(leftPage - 1)} disabled={leftPage === 1}
-                      style={{ background: "#fff", border: "1px solid #d1d5db", borderRadius: 4, width: 26, height: 26, display: "flex", alignItems: "center", justifyItems: "center", cursor: leftPage === 1 ? "not-allowed" : "pointer", opacity: leftPage === 1 ? 0.4 : 1 }}
-                    ><ChevronLeft size={13} style={{ margin: "0 auto" }} /></button>
-                    <button
-                      onClick={() => goToLeftPage(leftPage + 1)} disabled={leftPage === leftTotalPages || leftTotalPages === 0}
-                      style={{ background: "#fff", border: "1px solid #d1d5db", borderRadius: 4, width: 26, height: 26, display: "flex", alignItems: "center", justifyItems: "center", cursor: (leftPage === leftTotalPages || leftTotalPages === 0) ? "not-allowed" : "pointer", opacity: (leftPage === leftTotalPages || leftTotalPages === 0) ? 0.4 : 1 }}
-                    ><ChevronRight size={13} style={{ margin: "0 auto" }} /></button>
+                    <button type="button" onClick={() => goToLeftPage(leftPage - 1)} disabled={leftPage === 1} style={{ ...pagBtnStyle, width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center" }}><ChevronLeft size={14} /></button>
+                    <button type="button" onClick={() => goToLeftPage(leftPage + 1)} disabled={leftPage === leftTotalPages || leftTotalPages === 0} style={{ ...pagBtnStyle, width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center" }}><ChevronRight size={14} /></button>
                   </div>
                 </div>
               )}
             </div>
             
-            <div className="ucr-footer" style={{ justifyContent: "flex-start", borderRadius: "0 0 16px 16px" }}>
+            <div className="dc-footer" style={{ justifyContent: "flex-start", borderBottomLeftRadius: 16, borderBottomRightRadius: 16 }}>
               <button
                 type="button"
                 onClick={handleMapSubmit}
                 disabled={isSubmitting || !selectedStockistId}
-                style={{
-                  height: 36, padding: "0 20px", borderRadius: 8, background: "#2563eb", color: "#fff",
-                  fontSize: 13, fontWeight: 700, border: "none", cursor: (isSubmitting || !selectedStockistId) ? "not-allowed" : "pointer",
-                  opacity: (isSubmitting || !selectedStockistId) ? 0.6 : 1, display: "flex", alignItems: "center", gap: 8
-                }}
+                className="dc-submit-btn"
               >
-                {isSubmitting ? <Loader2 size={16} style={{ animation: "ucr-spin 1s linear infinite" }} /> : <Save size={16} />}
+                {isSubmitting ? <Loader2 size={14} style={{ animation: "dc-spin 1s linear infinite" }} /> : <Save size={14} />}
                 Map Stockiest's
               </button>
             </div>
           </div>
-        ) : (
-          <div /> // Empty placeholder to maintain grid alignment
         )}
 
-        {/* RIGHT TABLE: Employees */}
-        {rightFilters.stateId && rightFilters.districtIds.length > 0 ? (
-          <div className="ucr-card" style={{ marginBottom: 0, minWidth: 0, display: "flex", flexDirection: "column" }}>
-            <div className="ucr-header" style={{ background: "#f9fafb" }}>
-              <h3 style={{ fontSize: 14, fontWeight: 700, color: "#374151", margin: 0 }}>Employees List</h3>
+        {/* RIGHT COMPACT TABLE: Employees List */}
+        {rightFilters.stateId && rightFilters.districtIds.length > 0 && (
+          <div className="dc-card" style={{ marginBottom: 0, minWidth: 0, display: "flex", flexDirection: "column" }}>
+            <div className="dc-header" style={{ background: "#f8fafc" }}>
+              <h3 className="ucr-brand" style={{ fontSize: 14, fontWeight: 700, color: "#475569" }}>Employees List</h3>
             </div>
             
-            <div className="ucr-body" style={{ padding: 0, flex: 1, display: "flex", flexDirection: "column" }}>
+            <div className="dc-body" style={{ padding: 0, flex: 1, display: "flex", flexDirection: "column" }}>
               <div className="ucr-table-container" style={{ border: "none", borderRadius: 0, flex: 1 }}>
-                <table className="ucr-table" style={{ minWidth: 400 }}>
+                <table className="ucr-table" style={{ minWidth: 500 }}>
                   <thead>
                     <tr>
-                      <th style={{ width: 60, textAlign: "center", cursor: "pointer" }} onClick={toggleAllEmployees}>
-                        <div style={{ 
-                          width: 16, height: 16, borderRadius: 4, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center",
-                          border: selectedEmployeeIds.length === employees.length && employees.length > 0 ? "1px solid #2563eb" : "2px solid #d1d5db",
-                          background: selectedEmployeeIds.length === employees.length && employees.length > 0 ? "#2563eb" : "#fff"
-                        }}>
+                      <th style={{ width: 60, textAlign: "center" }}>
+                        <div 
+                          onClick={toggleAllEmployees}
+                          style={{ 
+                            width: 16, height: 16, borderRadius: 4, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+                            border: selectedEmployeeIds.length === employees.length && employees.length > 0 ? "1px solid #3B82F6" : "2px solid #cbd5e1",
+                            background: selectedEmployeeIds.length === employees.length && employees.length > 0 ? "#3B82F6" : "#fff",
+                            transition: "all 0.15s"
+                          }}
+                        >
                           {selectedEmployeeIds.length === employees.length && employees.length > 0 && <Check size={12} style={{ color: "#fff" }} />}
                         </div>
                       </th>
@@ -487,12 +648,12 @@ export default function UserStockistMapping() {
                     {isRightLoading ? (
                       <tr>
                         <td colSpan={3} style={{ textAlign: "center", padding: 40 }}>
-                          <Loader2 style={{ animation: "ucr-spin 1s linear infinite", margin: "0 auto", color: "#2563eb" }} size={24} />
+                          <Loader2 style={{ animation: "dc-spin 1s linear infinite", margin: "0 auto", color: "#3B82F6" }} size={20} />
                         </td>
                       </tr>
                     ) : employees.length === 0 ? (
                       <tr>
-                        <td colSpan={3} style={{ textAlign: "center", padding: 40, color: "#9ca3af" }}>
+                        <td colSpan={3} style={{ textAlign: "center", padding: 40, color: "#94a3b8", fontStyle: "italic" }}>
                           No employees found for the selected filters.
                         </td>
                       </tr>
@@ -501,22 +662,22 @@ export default function UserStockistMapping() {
                         <tr 
                           key={row.id} 
                           onClick={() => toggleEmployeeSelection(row.id)}
-                          style={{ 
-                            cursor: "pointer", 
-                            background: selectedEmployeeIds.includes(row.id) ? "#eff6ff" : "transparent"
-                          }}
+                          style={{ background: selectedEmployeeIds.includes(row.id) ? "rgba(59, 130, 246, 0.05)" : "transparent" }}
                         >
-                          <td style={{ textAlign: "center" }}>
-                            <div style={{ 
-                              width: 16, height: 16, borderRadius: 4, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center",
-                              border: selectedEmployeeIds.includes(row.id) ? "1px solid #2563eb" : "2px solid #d1d5db",
-                              background: selectedEmployeeIds.includes(row.id) ? "#2563eb" : "#fff"
-                            }}>
+                          <td style={{ textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
+                            <div 
+                              onClick={() => toggleEmployeeSelection(row.id)}
+                              style={{ 
+                                width: 16, height: 16, borderRadius: 4, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+                                border: selectedEmployeeIds.includes(row.id) ? "1px solid #3B82F6" : "2px solid #cbd5e1",
+                                background: selectedEmployeeIds.includes(row.id) ? "#3B82F6" : "#fff", transition: "all 0.15s"
+                              }}
+                            >
                               {selectedEmployeeIds.includes(row.id) && <Check size={12} style={{ color: "#fff" }} />}
                             </div>
                           </td>
-                          <td style={{ fontWeight: 600 }}>{row.headquarterName}</td>
-                          <td style={{ fontWeight: 600, color: "#374151" }}>{row.employeeName}</td>
+                          <td style={{ fontWeight: 600, color: "#1e293b" }}>{row.headquarterName}</td>
+                          <td style={{ fontWeight: 600, color: "#475569" }}>{row.employeeName}</td>
                         </tr>
                       ))
                     )}
@@ -524,130 +685,179 @@ export default function UserStockistMapping() {
                 </table>
               </div>
               
-              {/* Pagination */}
               {employees.length > 0 && (
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderTop: "1px solid #f3f4f6", background: "#f9fafb", fontSize: 11, flexWrap: "wrap", gap: 12, borderRadius: "0 0 16px 16px" }}>
-                  <div style={{ color: "#6b7280" }}>
-                    Showing <span style={{ fontWeight: 700, color: "#374151" }}>{pagedEmployees.length === 0 ? 0 : (rightPage - 1) * rightPageSize + 1}</span> to <span style={{ fontWeight: 700, color: "#374151" }}>{Math.min(rightPage * rightPageSize, employees.length)}</span> of <span style={{ fontWeight: 700, color: "#374151" }}>{employees.length}</span> entries
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderTop: "1px solid #edf2f7", background: "#f8fafc", fontSize: 12, flexWrap: "wrap", gap: 12, borderBottomLeftRadius: 16, borderBottomRightRadius: 16 }}>
+                  <div style={{ color: "#64748b" }}>
+                    Showing <span style={{ fontWeight: 700, color: "#1e293b" }}>{(rightPage - 1) * rightPageSize + 1}</span> to <span style={{ fontWeight: 700, color: "#1e293b" }}>{Math.min(rightPage * rightPageSize, employees.length)}</span> of <span style={{ fontWeight: 700, color: "#1e293b" }}>{employees.length}</span> entries
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <select
                       value={rightPageSize}
                       onChange={(e) => { setRightPageSize(Number(e.target.value)); setRightPage(1); }}
-                      style={{ border: "1px solid #d1d5db", borderRadius: 4, padding: "2px 6px" }}
+                      style={{ border: "1px solid #e2e8f0", borderRadius: 6, padding: "2px 8px", outline: "none", cursor: "pointer", color: "#475569", background: "#ffffff", fontFamily: "'Inter', sans-serif" }}
                     >
                       {PAGE_SIZES.map((s) => (<option key={s} value={s}>{s}</option>))}
                     </select>
-                    <button
-                      onClick={() => goToRightPage(rightPage - 1)} disabled={rightPage === 1}
-                      style={{ background: "#fff", border: "1px solid #d1d5db", borderRadius: 4, width: 26, height: 26, display: "flex", alignItems: "center", justifyItems: "center", cursor: rightPage === 1 ? "not-allowed" : "pointer", opacity: rightPage === 1 ? 0.4 : 1 }}
-                    ><ChevronLeft size={13} style={{ margin: "0 auto" }} /></button>
-                    <button
-                      onClick={() => goToRightPage(rightPage + 1)} disabled={rightPage === rightTotalPages || rightTotalPages === 0}
-                      style={{ background: "#fff", border: "1px solid #d1d5db", borderRadius: 4, width: 26, height: 26, display: "flex", alignItems: "center", justifyItems: "center", cursor: (rightPage === rightTotalPages || rightTotalPages === 0) ? "not-allowed" : "pointer", opacity: (rightPage === rightTotalPages || rightTotalPages === 0) ? 0.4 : 1 }}
-                    ><ChevronRight size={13} style={{ margin: "0 auto" }} /></button>
+                    <button type="button" onClick={() => goToRightPage(rightPage - 1)} disabled={rightPage === 1} style={{ ...pagBtnStyle, width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center" }}><ChevronLeft size={14} /></button>
+                    <button type="button" onClick={() => goToRightPage(rightPage + 1)} disabled={rightPage === rightTotalPages || rightTotalPages === 0} style={{ ...pagBtnStyle, width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center" }}><ChevronRight size={14} /></button>
                   </div>
                 </div>
               )}
             </div>
           </div>
-        ) : (
-          <div /> // Empty placeholder
         )}
       </div>
 
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// UI Components
-// ═══════════════════════════════════════════════════════════════════
-
-function SingleDropdown({ label, options, value, onSelect, disabled }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [pos, setPos] = useState({ top: 0, left: 0, width: 0 });
-  const ref = useRef(null);
-
-  const selectedOption = options.find((option) => String(option.value) === String(value));
-  const active = isOpen || Boolean(value);
-
-  const openMenu = () => {
-    if (disabled) return;
-    const rect = ref.current?.getBoundingClientRect();
-    if (rect) {
-      setPos({
-        top: rect.bottom + 4,
-        left: rect.left,
-        width: rect.width
-      });
-    }
-    setIsOpen(true);
-  };
-
-  return (
-    <div className="relative w-full select-none mt-1">
-      <div
-        ref={ref}
-        onClick={openMenu}
-        style={{
-          width: "100%", height: FH, borderRadius: 8, padding: "0 12px", fontSize: 13, display: "flex",
-          alignItems: "center", border: `1.5px solid ${active && !disabled ? "#2563eb" : "#d1d5db"}`,
-          cursor: disabled ? "not-allowed" : "pointer", background: disabled ? "#f3f4f6" : "#fff",
-          transition: "border-color 0.2s"
-        }}
-      >
-        <span style={{ flex: 1, fontWeight: 600, color: (Boolean(value) && !disabled) ? "#111827" : disabled && Boolean(value) ? "#6b7280" : "transparent", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginRight: 8 }}>
-          {selectedOption?.label || " "}
-        </span>
-        <ChevronDown size={14} style={{ color: "#9ca3af", transform: isOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "0.2s", flexShrink: 0 }} />
-      </div>
-      <label
-        style={{
-          position: "absolute", left: 10, top: active ? -9 : 12, fontSize: active ? 10 : 12,
-          fontWeight: 600, color: disabled ? "#9ca3af" : (active ? "#2563eb" : "#9ca3af"), background: disabled ? (active ? "#f3f4f6" : "transparent") : "#fff",
-          padding: "0 4px", transition: "0.2s", pointerEvents: "none",
-          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "calc(100% - 20px)"
-        }}
-      >
-        {label}
-      </label>
-
-      {isOpen && !disabled && (
-        <Portal top={pos.top} left={pos.left} width={pos.width} onClose={() => setIsOpen(false)}>
-          <div style={{ maxHeight: 250, overflowY: "auto", padding: "4px 0" }}>
-            {options.length === 0 ? (
-              <p style={{ padding: "12px 16px", fontSize: 13, color: "#9ca3af", margin: 0, textAlign: "center", fontStyle: "italic" }}>No options available</p>
-            ) : (
-              options.map((opt) => (
-                <div
-                  key={opt.value}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    onSelect(opt.value);
-                    setIsOpen(false);
-                  }}
-                  style={{
-                    padding: "10px 12px", fontSize: 13, cursor: "pointer", fontWeight: 600,
-                    background: String(value) === String(opt.value) ? "#eff6ff" : "transparent",
-                    color: String(value) === String(opt.value) ? "#2563eb" : "#374151"
-                  }}
-                >
-                  {opt.label}
-                </div>
-              ))
-            )}
+      {/* ── Success Popup ── */}
+      {popup.isOpen && (
+        <div className="dc-overlay">
+          <div className="dc-popup">
+            <div style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(59,130,246,0.06)", border: "1px solid rgba(59,130,246,0.25)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
+              <Check size={28} style={{ color: "#3B82F6", strokeWidth: 2.5 }} />
+            </div>
+            <h3 className="ucr-brand" style={{ fontSize: 17, fontWeight: 700, color: "#1e293b", textAlign: "center", margin: "0 0 8px", letterSpacing: "-0.01em" }}>Success</h3>
+            <p style={{ fontSize: 13, color: "#94a3b8", textAlign: "center", margin: "0 0 24px" }}>{popup.message}</p>
+            <button
+              type="button"
+              onClick={() => setPopup({ isOpen: false, message: "" })}
+              style={{
+                background: "linear-gradient(135deg, #3B82F6, #2563eb)", color: "#fff", border: "none", borderRadius: 8,
+                padding: "10px 0", width: "100%", fontSize: 13.5, fontWeight: 600, cursor: "pointer",
+                fontFamily: "'Plus Jakarta Sans', sans-serif", boxShadow: "0 4px 14px rgba(59,130,246,0.2)", transition: "all 0.15s"
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 6px 20px rgba(59,130,246,0.3)"; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 14px rgba(59,130,246,0.2)"; }}
+            >
+              Continue
+            </button>
           </div>
-        </Portal>
+        </div>
       )}
     </div>
   );
 }
 
+const pagBtnStyle = { background: "#ffffff", border: "1px solid #e2e8f0", padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", color: "#475569", fontFamily: "'Inter', sans-serif" };
+
+// ─── Searchable Portal Configuration Dropdown Component ───
+function SingleDropdown({ label, options, value, onSelect, disabled }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
+  const ref = useRef(null);
+
+  const selectedOption = options.find((option) => String(option.value) === String(value));
+  const hasVal = Boolean(value);
+  const active = isOpen || hasVal;
+  const borderColor = isOpen ? "#3B82F6" : hasVal ? "#bfdbfe" : "#e2e8f0";
+  const bgColor = disabled ? "#f8fafc" : isOpen ? "#eff6ff" : "#ffffff";
+  const shadow  = isOpen && !disabled ? "0 0 0 3px rgba(59,130,246,0.15)" : "none";
+  const labelColor = isOpen ? "#3B82F6" : hasVal ? "#64748b" : "#94a3b8";
+
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setIsOpen(false);
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
+
+  const handleTriggerClick = () => {
+    if (disabled) return;
+    if (!isOpen && ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      setCoords({
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX,
+        width: rect.width,
+      });
+    }
+    setIsOpen(!isOpen);
+  };
+
+  return (
+    <div ref={ref} style={{ position: "relative", width: "100%", userSelect: "none" }} className="dc-field-wrap">
+      <div
+        onClick={handleTriggerClick}
+        style={{
+          width: "100%", height: FH, borderRadius: 8, padding: "0 36px 0 12px", fontSize: 13, display: "flex",
+          alignItems: "center", border: `1.5px solid ${disabled ? "#f1f5f9" : borderColor}`, cursor: disabled ? "not-allowed" : "pointer",
+          background: bgColor + " !important", boxShadow: disabled ? "none" : shadow, transition: "all 0.18s", boxSizing: "border-box"
+        }}
+      >
+        <span style={{ flex: 1, fontWeight: 500, color: value ? "#1e293b" : "transparent", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontSize: 14 }}>
+          {selectedOption?.label || " "}
+        </span>
+        <div style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: isOpen ? "#3B82F6" : "#94a3b8", display: "flex", alignItems: "center" }}>
+          <ChevronDown size={15} style={{ transform: isOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }} />
+        </div>
+      </div>
+      <label
+        style={{
+          position: "absolute", left: 10, top: active ? 0 : "50%", transform: "translateY(-50%)", fontSize: active ? 11 : 13,
+          fontWeight: 500, color: disabled ? "#cbd5e1" : labelColor, background: active ? "#ffffff" : "transparent",
+          padding: active ? "0 5px" : "0", transition: "all 0.12s ease-out", pointerEvents: "none", zIndex: 20
+        }}
+      >
+        {label}
+      </label>
+
+      {isOpen && !disabled && createPortal(
+        <div className="dc-portal-dropdown" style={{ position: "absolute", top: coords.top + 4, left: coords.left, width: coords.width }}>
+          <ul style={{ maxHeight: 200, overflowY: "auto", margin: 0, padding: "4px 0", listStyle: "none", background: "#ffffff" }}>
+            {options.length === 0 ? (
+              <li style={{ padding: "12px 16px", fontSize: 12, color: "#94a3b8", fontStyle: "italic", textAlign: "center" }}>No options available</li>
+            ) : (
+              options.map((opt) => (
+                <li
+                  key={opt.value}
+                  className={`dc-opt${String(value) === String(opt.value) ? " selected" : ""}`}
+                  style={{
+                    padding: "10px 14px", fontSize: "13.5px", borderRadius: "8px", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px",
+                    color: String(value) === String(opt.value) ? "#2563eb" : "#475569",
+                    backgroundColor: String(value) === String(opt.value) ? "rgba(59,130,246,0.08)" : "#ffffff",
+                    fontWeight: String(value) === String(opt.value) ? "600" : "500"
+                  }}
+                  onMouseDown={(e) => { e.preventDefault(); onSelect(opt.value); setIsOpen(false); }}
+                >
+                  {String(value) === String(opt.value) && <Check size={12} style={{ color: "#3B82F6", flexShrink: 0 }} />}
+                  {opt.label}
+                </li>
+              ))
+            )}
+          </ul>
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+}
+
+// ─── Searchable Portal Multi-Select Dropdown Component ───
 function MultiSelectDropdown({ label, options, selectedIds, onChange, disabled = false }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [pos, setPos] = useState({ top: 0, left: 0, width: 0 });
+  const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
   const ref = useRef(null);
+
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setIsOpen(false);
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
+
+  const handleTriggerClick = () => {
+    if (disabled) return;
+    if (!isOpen && ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      setCoords({
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX,
+        width: rect.width,
+      });
+    }
+    setIsOpen(!isOpen);
+  };
 
   const toggleValue = (value) => {
     if (selectedIds.includes(value)) {
@@ -667,157 +877,87 @@ function MultiSelectDropdown({ label, options, selectedIds, onChange, disabled =
 
   const hasValue = selectedIds.length > 0;
   const active = isOpen || hasValue;
-
-  const openMenu = () => {
-    if (disabled) return;
-    const rect = ref.current?.getBoundingClientRect();
-    if (rect) {
-      setPos({
-        top: rect.bottom + 4,
-        left: rect.left,
-        width: rect.width
-      });
-    }
-    setIsOpen(true);
-  };
+  const borderColor = isOpen ? "#3B82F6" : hasValue ? "#bfdbfe" : "#e2e8f0";
+  const bgColor = disabled ? "#f8fafc" : isOpen ? "#eff6ff" : "#ffffff";
+  const shadow  = isOpen && !disabled ? "0 0 0 3px rgba(59,130,246,0.15)" : "none";
+  const labelColor = isOpen ? "#3B82F6" : hasValue ? "#64748b" : "#94a3b8";
 
   return (
-    <div className="relative w-full select-none mt-1">
+    <div ref={ref} style={{ position: "relative", width: "100%", userSelect: "none" }} className="dc-field-wrap">
       <div
-        ref={ref}
-        onClick={openMenu}
+        onClick={handleTriggerClick}
         style={{
-          width: "100%", height: FH, borderRadius: 8, padding: "0 12px", fontSize: 13, display: "flex",
-          alignItems: "center", border: `1.5px solid ${active && !disabled ? "#2563eb" : "#d1d5db"}`,
-          cursor: disabled ? "not-allowed" : "pointer", background: disabled ? "#f3f4f6" : "#fff",
-          transition: "border-color 0.2s"
+          width: "100%", height: FH, borderRadius: 8, padding: "0 36px 0 12px", fontSize: 13, display: "flex",
+          alignItems: "center", border: `1.5px solid ${disabled ? "#f1f5f9" : borderColor}`, cursor: disabled ? "not-allowed" : "pointer",
+          background: bgColor + " !important", boxShadow: disabled ? "none" : shadow, transition: "all 0.18s", boxSizing: "border-box"
         }}
       >
-        <span style={{ flex: 1, fontWeight: 600, color: hasValue ? "#111827" : "transparent", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginRight: 8 }}>
+        <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 500, color: hasValue ? (disabled ? "#94a3b8" : "#1e293b") : "transparent", fontSize: 14 }}>
           {selectedLabel || " "}
         </span>
-        <ChevronDown size={14} style={{ color: "#9ca3af", transform: isOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "0.2s", flexShrink: 0 }} />
+        <div style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: isOpen ? "#3B82F6" : "#94a3b8", display: "flex", alignItems: "center" }}>
+          <ChevronDown size={15} style={{ transform: isOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }} />
+        </div>
       </div>
       <label
         style={{
-          position: "absolute", left: 10, top: active ? -9 : 12, fontSize: active ? 10 : 12,
-          fontWeight: 600, color: disabled ? "#9ca3af" : (active ? "#2563eb" : "#9ca3af"), background: disabled ? (active ? "#f3f4f6" : "transparent") : "#fff",
-          padding: "0 4px", transition: "0.2s", pointerEvents: "none",
-          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "calc(100% - 20px)"
+          position: "absolute", left: 10, top: active ? 0 : "50%", transform: "translateY(-50%)", fontSize: active ? 11 : 13,
+          fontWeight: 500, color: disabled ? "#cbd5e1" : labelColor, background: active ? "#ffffff" : "transparent",
+          padding: active ? "0 5px" : "0", transition: "all 0.12s ease-out", pointerEvents: "none", zIndex: 20
         }}
       >
         {label}
       </label>
 
-      {isOpen && !disabled && (
-        <Portal top={pos.top} left={pos.left} width={pos.width} onClose={() => setIsOpen(false)}>
-          <div style={{ display: "flex", borderBottom: "1px solid #f3f4f6" }}>
+      {isOpen && !disabled && createPortal(
+        <div className="dc-portal-dropdown" style={{ position: "absolute", top: coords.top + 4, left: coords.left, width: coords.width }}>
+          <div style={{ display: "flex", borderBottom: "1px solid #edf2f7", background: "#f8fafc" }}>
             <button
               type="button"
-              onMouseDown={(e) => {
-                e.preventDefault();
-                selectAll();
-              }}
-              style={{ flex: 1, padding: "8px 0", fontSize: 12, fontWeight: 700, color: "#fff", background: "#2563eb", border: "none", cursor: "pointer" }}
+              onMouseDown={(e) => { e.preventDefault(); selectAll(); }}
+              style={{ flex: 1, padding: "10px", fontSize: 11, fontWeight: 700, background: "transparent", color: "#2563eb", border: "none", cursor: "pointer", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
             >
               Select All
             </button>
             <button
               type="button"
-              onMouseDown={(e) => {
-                e.preventDefault();
-                clearAll();
-              }}
-              style={{ flex: 1, padding: "8px 0", fontSize: 12, fontWeight: 700, color: "#fff", background: "#ef4444", border: "none", cursor: "pointer" }}
+              onMouseDown={(e) => { e.preventDefault(); clearAll(); }}
+              style={{ flex: 1, padding: "10px", fontSize: 11, fontWeight: 700, background: "transparent", color: "#ef4444", border: "none", cursor: "pointer", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
             >
               Clear All
             </button>
           </div>
 
-          <div style={{ maxHeight: 250, overflowY: "auto", padding: "4px 0" }}>
+          <ul style={{ maxHeight: 200, overflowY: "auto", padding: "4px 0", margin: 0, listStyle: "none", background: "#ffffff" }}>
             {options.length === 0 ? (
-              <p style={{ padding: "12px 16px", fontSize: 13, color: "#9ca3af", margin: 0, textAlign: "center", fontStyle: "italic" }}>No options available.</p>
+              <li style={{ padding: "12px 16px", fontSize: 12, color: "#94a3b8", fontStyle: "italic" }}>No option available</li>
             ) : (
               options.map((option) => {
                 const optId = String(option.id || option.value);
                 const isSelected = selectedIds.includes(optId);
                 return (
-                  <button
+                  <li
                     key={optId}
-                    type="button"
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      toggleValue(optId);
-                    }}
+                    className={`dc-opt${isSelected ? " selected" : ""}`}
                     style={{
-                      width: "100%", textAlign: "left", padding: "10px 16px", fontSize: 13, fontWeight: 600,
-                      display: "flex", alignItems: "center", gap: 10, background: isSelected ? "#eff6ff" : "transparent",
-                      color: isSelected ? "#2563eb" : "#4b5563", border: "none", cursor: "pointer"
+                      padding: "10px 14px", fontSize: "13.5px", borderRadius: "8px", cursor: "pointer",
+                      display: "flex", alignItems: "center", gap: "8px",
+                      color: isSelected ? "#2563eb" : "#475569",
+                      backgroundColor: isSelected ? "rgba(59,130,246,0.08)" : "#ffffff",
+                      fontWeight: isSelected ? "600" : "500"
                     }}
+                    onMouseDown={(e) => { e.preventDefault(); toggleValue(optId); }}
                   >
-                    <span
-                      style={{
-                        width: 16, height: 16, borderRadius: 4, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
-                        border: isSelected ? "2px solid #2563eb" : "2px solid #d1d5db", background: isSelected ? "#2563eb" : "#fff"
-                      }}
-                    >
-                      {isSelected && (
-                        <svg viewBox="0 0 10 8" style={{ width: 10, height: 8 }} fill="none">
-                          <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      )}
-                    </span>
+                    <input type="checkbox" checked={isSelected} readOnly style={{ accentColor: "#3B82F6", cursor: "pointer", marginRight: 4 }} />
                     {option.label}
-                  </button>
+                  </li>
                 );
               })
             )}
-          </div>
-        </Portal>
+          </ul>
+        </div>,
+        document.body
       )}
-    </div>
-  );
-}
-
-function Portal({ top, left, width, onClose, children }) {
-  const ref = useRef(null);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const handleMouseDown = (e) => {
-        if (ref.current && !ref.current.contains(e.target)) {
-          onClose();
-        }
-      };
-      document.addEventListener("mousedown", handleMouseDown);
-      return () => document.removeEventListener("mousedown", handleMouseDown);
-    }, 10);
-
-    return () => clearTimeout(timer);
-  }, [onClose]);
-
-  useEffect(() => {
-    const handleScroll = (e) => {
-      if (ref.current && ref.current.contains(e.target)) return;
-      onClose();
-    };
-    
-    window.addEventListener("scroll", handleScroll, true);
-    window.addEventListener("resize", onClose);
-    
-    return () => {
-      window.removeEventListener("scroll", handleScroll, true);
-      window.removeEventListener("resize", onClose);
-    };
-  }, [onClose]);
-
-  return (
-    <div
-      ref={ref}
-      style={{ position: "fixed", top, left, width, zIndex: 99999 }}
-      className="dropdown-portal bg-white border border-[#e5e7eb] rounded-lg shadow-xl overflow-hidden"
-    >
-      {children}
     </div>
   );
 }

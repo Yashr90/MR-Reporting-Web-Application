@@ -3,27 +3,46 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   Menu, Bell, X, ChevronDown, LogOut, User,
   LayoutDashboard, SlidersHorizontal, Database,
-  IndianRupee, BookOpen, FileText
+  IndianRupee, FileText, ChevronRight,
+  CalendarDays, Stethoscope, CalendarCheck, Receipt,
+  ClipboardList, UserPlus, Map, Send, Banknote,
+  BookOpen, Eye, CalendarRange, Activity
 } from "lucide-react";
 // import api from "../services/api";
 
-/* ─── Google Fonts + sidebar utilities ───────────────────────────────────── */
+/* ─── Font & Global Styles ───────────────────────────────────────────────── */
 const FontStyle = () => (
   <style>{`
-    @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
 
     .mr-layout { font-family: 'Inter', sans-serif; }
-    .mr-layout .brand-font { font-family: 'Manrope', sans-serif; }
+    .brand-font { font-family: 'Plus Jakarta Sans', sans-serif; }
 
+    /* ── Sidebar scrollbar ── */
     .sidebar-scroll::-webkit-scrollbar { width: 4px; }
     .sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
     .sidebar-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 99px; }
     .sidebar-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.18); }
 
-    .nav-active-glow {
-      background: linear-gradient(90deg, rgba(37,99,235,0.22) 0%, rgba(37,99,235,0.07) 100%);
-      border-left: 3px solid #3B82F6;
+    /* ── Main content scrollbar ── */
+    .main-scroll::-webkit-scrollbar { width: 5px; }
+    .main-scroll::-webkit-scrollbar-track { background: #f1f5f9; }
+    .main-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
+    .main-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+    .tooltip-shadow {
+      box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+      border: 1px solid rgba(255,255,255,0.1);
     }
+
+    /* ── Header dropdown animation ── */
+    @keyframes header-zoom { from{opacity:0;transform:scale(0.94) translateY(-6px)} to{opacity:1;transform:scale(1) translateY(0)} }
+    .header-dropdown-anim { animation: header-zoom 0.18s cubic-bezier(0.34,1.56,0.64,1); }
+    .header-dropdown-shadow { box-shadow: 0 8px 32px rgba(0,0,0,0.10), 0 1.5px 6px rgba(0,0,0,0.06); }
+
+    /* ── Notification badge pulse ── */
+    @keyframes badge-pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+    .badge-pulse { animation: badge-pulse 2s ease-in-out infinite; }
   `}</style>
 );
 
@@ -56,7 +75,6 @@ export default function MRLayout() {
     fetchProfile();
   }, []);
 
-  // Close profile dropdown when clicking anywhere outside it
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (profileRef.current && !profileRef.current.contains(e.target)) {
@@ -68,248 +86,246 @@ export default function MRLayout() {
   }, []);
 
   const handleLogout = () => {
-    sessionStorage.clear(); // Clears all session data
+    sessionStorage.clear();
     navigate("/login", { replace: true });
+  };
+
+  const toggleL1 = (menu) => {
+    setReportAnalysisOpen(menu === 'report'  ? !reportAnalysisOpen : false);
+    setMasterOpen(        menu === 'master'  ? !masterOpen         : false);
+    setExpenseOpen(       menu === 'expense' ? !expenseOpen        : false);
+  };
+
+  const toggleL2 = (menu) => {
+    setDcrOpen(           menu === 'dcr'      ? !dcrOpen            : false);
+    setProviderReportOpen(menu === 'provider' ? !providerReportOpen : false);
+    setTpReportOpen(      menu === 'tp'       ? !tpReportOpen       : false);
+    setExpenseReportOpen( menu === 'expense'  ? !expenseReportOpen  : false);
   };
 
   return (
     <>
       <FontStyle />
-      <div className="mr-layout min-h-screen flex bg-[#F3F4F6]">
+      <div className="mr-layout min-h-screen flex bg-[#f8fafc]">
 
         {/* Mobile overlay */}
         {sidebarOpen && (
           <div
-            className="fixed inset-0 bg-black/60 z-40 lg:hidden backdrop-blur-[2px]"
+            className="fixed inset-0 bg-black/70 z-40 lg:hidden backdrop-blur-sm transition-opacity duration-300"
             onClick={() => setSidebarOpen(false)}
           />
         )}
 
         {/* ══════════════════════════════════════════════════════════════
-            SIDEBAR  bg-[#242938]
+            SIDEBAR — exact same as AdminLayout
         ══════════════════════════════════════════════════════════════ */}
         <aside className={`
-          fixed lg:static z-50
+          fixed lg:sticky top-0 z-50
           ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0
-          ${collapsed ? "lg:w-[76px]" : "lg:w-[285px]"}
-          h-full lg:h-screen flex flex-col
-          bg-[#242938] border-r border-white/[0.05]
-          transition-all duration-300 ease-in-out select-none
+          ${collapsed ? "lg:w-[88px] overflow-visible" : "lg:w-[280px] overflow-hidden"}
+          h-screen flex flex-col
+          bg-[#1a1d27] border-r border-white/5 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] select-none shadow-2xl lg:shadow-none
         `}>
 
-          {/* ── Brand bar ── */}
+          {/* ── Brand Header ── */}
           <div className={`
-            flex items-center gap-3 flex-shrink-0
-            h-[64px] border-b border-white/[0.07]
-            ${collapsed ? "justify-center px-0" : "justify-between px-4"}
+            flex items-center flex-shrink-0 h-[72px] px-6 border-b border-white/5
+            ${collapsed ? "justify-center" : "justify-between"}
           `}>
-            {!collapsed && (
-              <div className="flex items-center gap-3 min-w-0">
-                <span className="brand-font text-white font-bold text-[17px] tracking-wide truncate">
-                  MR Reporting
-                </span>
-              </div>
-            )}
+            {!collapsed ? (
+              <div className="flex items-center justify-between w-full animate-in fade-in duration-500">
+                <div className="flex items-center gap-3">
+                  {/* Pink skewed logo — MR brand color kept */}
+                  <div className="relative w-8 h-8 flex items-center justify-center bg-gradient-to-br from-[#0284C7] to-[#0369A1] skew-x-[-12deg] rounded-lg shadow-lg shadow-sky-600/30">
+                    <span className="relative text-white font-bold text-base brand-font skew-x-[12deg]">M</span>
+                  </div>
+                  <span className="text-white font-bold text-[16px] tracking-wide brand-font">MR Panel</span>
+                </div>
 
-            <div className="flex items-center gap-1">
-              <button
-                className="hidden lg:flex items-center justify-center w-8 h-8 rounded-lg
-                  text-slate-500 hover:text-white hover:bg-white/[0.08] transition-all"
-                onClick={() => setCollapsed(!collapsed)}
-              >
-                <Menu size={18} />
+                <button onClick={() => setCollapsed(!collapsed)} className="hidden lg:block text-white/40 hover:text-white transition-colors">
+                  <Menu size={18} />
+                </button>
+
+                <button
+                  onClick={() => setSidebarOpen(false)}
+                  className="lg:hidden p-1.5 text-white/40 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                >
+                  <X size={18} strokeWidth={2.5} />
+                </button>
+              </div>
+            ) : (
+              <button onClick={() => setCollapsed(!collapsed)} className="text-white/40 hover:text-white transition-colors">
+                <Menu size={20} />
               </button>
-              <button
-                className="lg:hidden flex items-center justify-center w-8 h-8 rounded-lg
-                  text-slate-500 hover:text-white hover:bg-white/[0.08] transition-all"
-                onClick={() => setSidebarOpen(false)}
-              >
-                <X size={18} />
-              </button>
-            </div>
+            )}
           </div>
 
           {/* ── Navigation ── */}
-          <nav className="sidebar-scroll flex-1 overflow-y-auto py-3 px-3 space-y-0.5">
+          <nav className={`flex-1 py-4 space-y-1 ${collapsed ? "overflow-visible" : "sidebar-scroll overflow-y-auto"}`}>
 
-            <SidebarLink to="/mr/dashboard" icon={<LayoutDashboard size={19} />} label="Dashboard" collapsed={collapsed} />
+            <SidebarLink to="/mr/dashboard" icon={<LayoutDashboard size={18} />} label="Dashboard" collapsed={collapsed} />
 
-            {!collapsed && <SectionDivider label="Analytics" />}
+            {!collapsed && <SectionDivider label="ANALYTICS" />}
 
-            {/* REPORT ANALYSIS */}
-            <DropdownMenu icon={<SlidersHorizontal size={19} />} label="Report Analysis"
-              collapsed={collapsed} isOpen={reportAnalysisOpen} toggle={() => setReportAnalysisOpen(!reportAnalysisOpen)}>
-              
-              <NestedDropdown label="Daily Call Reports" isOpen={dcrOpen} toggle={() => setDcrOpen(!dcrOpen)}>
-                <SubLink to="/mr/reports/dcr-consolidate" label="DCR Consolidate MR" />
+            <DropdownMenu icon={<Activity size={18} />} label="Report Analysis"
+              collapsed={collapsed} isOpen={reportAnalysisOpen} toggle={() => toggleL1('report')}>
+
+              <NestedDropdown icon={<CalendarDays size={15} />} label="Daily Call Reports" isOpen={dcrOpen} toggle={() => toggleL2('dcr')}>
+                <SubLink to="/mr/reports/dcr-consolidate" label="DCR Consolidate MR" icon={<ClipboardList size={14} />} nested />
               </NestedDropdown>
 
-              <NestedDropdown label="Doctor/Chemist/Stockiest" isOpen={providerReportOpen} toggle={() => setProviderReportOpen(!providerReportOpen)}>
-                <SubLink to="/mr/reports/view-provider"   label="View Doctor/Chemist" />
-                <SubLink to="/mr/reports/doctor-visit"    label="Doctor Visit" />
-                <SubLink to="/mr/reports/chemist-visit"   label="Chemist/Stockiest Visit Report" />
-                <SubLink to="/mr/reports/missed-provider" label="Missed Doctor/Chemist" />
+              <NestedDropdown icon={<Stethoscope size={15} />} label="Doctor/Chemist/Stockiest" isOpen={providerReportOpen} toggle={() => toggleL2('provider')}>
+                <SubLink to="/mr/reports/view-provider"   label="View Doctor/Chemist"            icon={<Eye size={14} />}           nested />
+                <SubLink to="/mr/reports/doctor-visit"    label="Doctor Visit"                   icon={<Stethoscope size={14} />}   nested />
+                <SubLink to="/mr/reports/chemist-visit"   label="Chemist/Stockiest Visit Report" icon={<Activity size={14} />}      nested />
+                <SubLink to="/mr/reports/missed-provider" label="Missed Doctor/Chemist"          icon={<CalendarRange size={14} />} nested />
               </NestedDropdown>
 
-              <NestedDropdown label="TP Reports" isOpen={tpReportOpen} toggle={() => setTpReportOpen(!tpReportOpen)}>
-                <SubLink to="/mr/reports/tour-program" label="Tour Program" />
+              <NestedDropdown icon={<CalendarCheck size={15} />} label="TP Reports" isOpen={tpReportOpen} toggle={() => toggleL2('tp')}>
+                <SubLink to="/mr/reports/tour-program" label="Tour Program" icon={<Map size={14} />} nested />
               </NestedDropdown>
 
-              <NestedDropdown label="Expense Reports" isOpen={expenseReportOpen} toggle={() => setExpenseReportOpen(!expenseReportOpen)}>
-                <SubLink to="/mr/reports/view-expenses" label="View Expenses" />
+              <NestedDropdown icon={<Receipt size={15} />} label="Expense Reports" isOpen={expenseReportOpen} toggle={() => toggleL2('expense')}>
+                <SubLink to="/mr/reports/view-expenses" label="View Expenses" icon={<Eye size={14} />} nested />
               </NestedDropdown>
             </DropdownMenu>
 
-            {!collapsed && <SectionDivider label="Core Operations" />}
+            {!collapsed && <SectionDivider label="CORE OPERATIONS" />}
 
-            {/* MASTER */}
-            <DropdownMenu icon={<Database size={19} />} label="Master"
-              collapsed={collapsed} isOpen={masterOpen} toggle={() => setMasterOpen(!masterOpen)}>
-              <SubLink to="/mr/master/submit-dcr"        label="Submit DCR" />
-              <SubLink to="/mr/master/provider-creation" label="Doctor/Chemist Creation" />
-              <SubLink to="/mr/master/area-creation"     label="Area Creation" />
-              <SubLink to="/mr/master/submit-tour-program"         label="Submit Tour Program" />
+            <DropdownMenu icon={<Database size={18} />} label="Master"
+              collapsed={collapsed} isOpen={masterOpen} toggle={() => toggleL1('master')}>
+              <SubLink to="/mr/master/submit-dcr"          label="Submit DCR"              icon={<Send size={15} />}          />
+              <SubLink to="/mr/master/provider-creation"   label="Doctor/Chemist Creation" icon={<UserPlus size={15} />}     />
+              <SubLink to="/mr/master/area-creation"       label="Area Creation"           icon={<Map size={15} />}           />
+              <SubLink to="/mr/master/submit-tour-program" label="Submit Tour Program"     icon={<CalendarCheck size={15} />} />
             </DropdownMenu>
 
-            {/* EXPENSE */}
-            <DropdownMenu icon={<IndianRupee size={19} />} label="Expense"
-              collapsed={collapsed} isOpen={expenseOpen} toggle={() => setExpenseOpen(!expenseOpen)}>
-              <SubLink to="/mr/expense/create-sfc" label="Create SFC" />
+            <DropdownMenu icon={<IndianRupee size={18} />} label="Expense"
+              collapsed={collapsed} isOpen={expenseOpen} toggle={() => toggleL1('expense')}>
+              <SubLink to="/mr/expense/create-sfc" label="Create SFC" icon={<Banknote size={15} />} />
             </DropdownMenu>
 
-            {!collapsed && <SectionDivider label="Resources" />}
+            {!collapsed && <SectionDivider label="RESOURCES" />}
 
-            {/* HR POLICY */}
-            <SidebarLink to="/mr/hr-policy" icon={<FileText size={19} />} label="HR Policy" collapsed={collapsed} />
+            <SidebarLink to="/mr/hr-policy" icon={<BookOpen size={18} />} label="HR Policy" collapsed={collapsed} />
 
           </nav>
 
-          {/* ── Bottom user chip ── */}
-          {!collapsed && (
-            <div className="flex-shrink-0 px-3 pb-4 pt-3 border-t border-white/[0.06]">
-              <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.05]
-                hover:bg-white/[0.08] transition-colors cursor-pointer group">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600
-                  flex items-center justify-center text-white text-sm font-bold flex-shrink-0
-                  shadow-md shadow-blue-900/30">
-                  {mrProfile.initial}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="brand-font text-white text-[14px] font-semibold truncate leading-tight">
+          {/* ── Sidebar User Bottom Area ── */}
+          <div className="mt-auto px-4 py-4 border-t border-white/5 bg-[#1a1d27]">
+            <div className={`
+              flex items-center gap-3 py-2 px-2 rounded-xl bg-white/5 hover:bg-white/10 transition-all
+              ${collapsed ? "justify-center" : "cursor-pointer group"}
+            `}>
+              <div className="w-[38px] h-[38px] rounded-full bg-gradient-to-br from-[#0284C7] to-[#0369A1] flex items-center justify-center text-white font-bold text-[14px] shadow-md flex-shrink-0">
+                {mrProfile.initial}
+              </div>
+              {!collapsed && (
+                <div className="flex-1 min-w-0">
+                  <p className="text-white text-[13.5px] font-medium truncate group-hover:text-[#0284C7] transition-colors brand-font">
                     {mrProfile.name}
                   </p>
-                  <p className="text-[11px] text-slate-500 tracking-wide">Medical Representative</p>
+                  <p className="text-white/40 text-[11px] font-normal tracking-wide">Medical Representative</p>
                 </div>
-                <LogOut size={15} className="text-slate-600 group-hover:text-red-400 transition-colors flex-shrink-0"
-                  onClick={handleLogout} />
-              </div>
+              )}
+              {!collapsed && (
+                <button onClick={handleLogout} className="p-1.5 text-white/40 hover:text-white transition-colors">
+                  <LogOut size={16} />
+                </button>
+              )}
             </div>
-          )}
+          </div>
         </aside>
 
         {/* ══════════════════════════════════════════════════════════════
-            MAIN CONTENT
+            MAIN CONTENT AREA — white theme (same as AdminLayout)
         ══════════════════════════════════════════════════════════════ */}
-        <div className="flex-1 flex flex-col w-full h-screen overflow-hidden">
+        <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
 
-          {/* ── Top Bar ── */}
-          <header className="
-            flex-shrink-0 h-[64px]
-            bg-white border-b border-gray-200/70
-            flex items-center justify-between
-            px-4 sm:px-7
-            shadow-[0_1px_4px_0_rgba(0,0,0,0.05)]
-          ">
-            {/* Left — hamburger on mobile */}
-            <div className="flex items-center gap-3">
+          {/* ── Header ── */}
+          <header
+            className="h-[72px] bg-white border-b border-[#edf2f7] flex items-center justify-between px-6 z-30 sticky top-0"
+            style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}
+          >
+            <div className="flex items-center gap-4">
               <button
-                className="lg:hidden w-9 h-9 flex items-center justify-center rounded-xl
-                  text-gray-500 hover:bg-gray-100 transition-all"
                 onClick={() => setSidebarOpen(true)}
+                className="lg:hidden p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors"
               >
                 <Menu size={20} />
               </button>
+              <div className="hidden md:flex flex-col justify-center">
+                <h1 className="brand-font text-[15px] text-[#1e293b] leading-tight" style={{ fontWeight: 700 }}>
+                  Dashboard Overview
+                </h1>
+                <p className="text-[11.5px] text-[#94a3b8] font-normal leading-tight mt-0.5">
+                  Welcome back, {mrProfile.name}
+                </p>
+              </div>
             </div>
 
-            {/* Right — bell + profile */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
 
-              {/* Bell */}
-              <button className="relative w-9 h-9 flex items-center justify-center rounded-xl
-                text-gray-500 hover:bg-gray-100 transition-all">
-                <Bell size={19} />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-[1.5px] border-white" />
+              {/* Notification Bell */}
+              <button className="relative p-2 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors">
+                <Bell size={19} strokeWidth={1.8} />
+                <span className="badge-pulse absolute top-[9px] right-[9px] w-[7px] h-[7px] bg-red-500 rounded-full border-2 border-white"></span>
               </button>
 
-              <div className="w-px h-6 bg-gray-200 mx-1" />
+              <div className="h-6 w-px bg-slate-200 mx-1" />
 
-              {/* Profile */}
+              {/* Profile Dropdown */}
               <div ref={profileRef} className="relative">
                 <button
-                  onClick={() => setProfileOpen(prev => !prev)}
-                  className="flex items-center gap-2.5 pl-1.5 pr-3 py-1.5 rounded-xl
-                    hover:bg-gray-100 transition-all"
+                  onClick={() => setProfileOpen(!profileOpen)}
+                  className="flex items-center gap-2.5 py-1.5 px-2.5 rounded-xl border border-transparent hover:border-[#edf2f7] hover:bg-slate-50 transition-all"
                 >
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-700
-                    flex items-center justify-center text-white text-sm font-bold shadow-sm">
+                  <div
+                    className="w-[34px] h-[34px] rounded-full bg-gradient-to-br from-[#0284C7] to-[#0369A1] flex items-center justify-center text-white font-bold text-[13px] flex-shrink-0"
+                    style={{ boxShadow: "0 3px 8px rgba(2,132,199,0.30)" }}
+                  >
                     {mrProfile.initial}
                   </div>
-                  <div className="hidden sm:block text-left">
-                    <p className="brand-font text-[14px] font-semibold text-gray-800 leading-tight">
+                  <div className="hidden sm:flex flex-col justify-center text-left">
+                    <p className="brand-font text-[13.5px] text-[#1e293b] leading-tight" style={{ fontWeight: 600 }}>
                       {mrProfile.name}
                     </p>
-                    <p className="text-[11px] text-gray-400">Medical Representative</p>
+                    <p className="text-[11px] text-[#94a3b8] leading-tight font-normal">Medical Representative</p>
                   </div>
                   <ChevronDown
                     size={13}
-                    className={`hidden sm:block text-gray-400 transition-transform duration-200
-                      ${profileOpen ? "rotate-180" : ""}`}
+                    className={`text-slate-400 transition-transform duration-200 hidden sm:block ${profileOpen ? "rotate-180" : ""}`}
                   />
                 </button>
 
-                {/* Profile dropdown */}
                 {profileOpen && (
-                  <div className="absolute top-[calc(100%+8px)] right-0 w-56 bg-white
-                    rounded-2xl shadow-2xl border border-gray-100 py-2 z-50
-                    animate-in fade-in zoom-in-95 duration-150">
-
-                    {/* Header */}
-                    <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-700
-                        flex items-center justify-center text-white font-bold text-sm">
-                        {mrProfile.initial}
-                      </div>
-                      <div>
-                        <p className="brand-font text-[14px] font-bold text-gray-800">{mrProfile.name}</p>
-                        <p className="text-[11px] text-gray-500">Medical Representative</p>
-                      </div>
+                  <div className="header-dropdown-anim header-dropdown-shadow absolute top-[calc(100%+8px)] right-0 w-56 bg-white rounded-2xl border border-[#edf2f7] py-2 z-50">
+                    <div className="px-4 py-3 border-b border-[#f1f5f9]">
+                      <p className="text-[10px] text-[#0284C7] uppercase tracking-wider mb-1 brand-font" style={{ fontWeight: 600 }}>
+                        Account
+                      </p>
+                      <p className="text-[13.5px] text-[#1e293b] brand-font" style={{ fontWeight: 600 }}>
+                        {mrProfile.name}
+                      </p>
+                      <p className="text-[11px] text-[#94a3b8] mt-0.5">Medical Representative</p>
                     </div>
 
-                    {/* My Profile */}
                     <button
                       onClick={() => { setProfileOpen(false); navigate("/mr/profile"); }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-[13px] text-gray-700
-                        hover:bg-blue-50 hover:text-blue-700 transition-colors group"
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-[13px] text-[#64748b] hover:bg-slate-50 hover:text-[#1e293b] transition-colors"
                     >
-                      <div className="w-7 h-7 rounded-lg bg-gray-100 group-hover:bg-blue-100
-                        flex items-center justify-center transition-colors">
-                        <User size={14} className="text-gray-500 group-hover:text-blue-600" />
-                      </div>
+                      <User size={14} className="text-slate-400" />
                       My Profile
                     </button>
 
-                    <div className="border-t border-gray-100 mx-2 my-1" />
+                    <div className="mx-3 my-1 h-px bg-[#f1f5f9]" />
 
-                    {/* Logout */}
                     <button
                       onClick={handleLogout}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-[13px] text-red-600
-                        hover:bg-red-50 transition-colors group"
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-[13px] text-red-500 hover:bg-red-50 transition-colors brand-font"
+                      style={{ fontWeight: 500 }}
                     >
-                      <div className="w-7 h-7 rounded-lg bg-red-50 group-hover:bg-red-100
-                        flex items-center justify-center transition-colors">
-                        <LogOut size={14} className="text-red-500" />
-                      </div>
+                      <LogOut size={14} />
                       Sign Out
                     </button>
                   </div>
@@ -318,8 +334,8 @@ export default function MRLayout() {
             </div>
           </header>
 
-          {/* Page content */}
-          <main className="flex-1 overflow-y-auto p-4 sm:p-6 bg-[#F3F4F6]">
+          {/* ── Main Content ── */}
+          <main className="main-scroll flex-1 overflow-y-auto p-6 md:p-8 bg-[#f8fafc]">
             <Outlet />
           </main>
         </div>
@@ -328,93 +344,85 @@ export default function MRLayout() {
   );
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   SIDEBAR PRIMITIVES - ALIGNMENT FIXED
-══════════════════════════════════════════════════════════════════════════ */
+/* ─── Sidebar Helper Components — exact same as AdminLayout ──────────────── */
 
 function SectionDivider({ label }) {
   return (
-    <div className="flex items-center gap-2.5 px-2 pt-5 pb-2">
-      <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#4B5563] whitespace-nowrap">
+    <div className="px-6 pt-5 pb-2 flex items-center gap-3">
+      <span className="text-[10px] font-semibold uppercase tracking-widest text-[#0284C7]/70">
         {label}
       </span>
-      <div className="flex-1 h-px bg-white/[0.06]" />
+      <div className="h-px flex-1 bg-[#0284C7]/15"></div>
     </div>
   );
 }
 
 function SidebarLink({ to, icon, label, collapsed, badge }) {
   return (
-    <NavLink
-      to={to}
-      title={collapsed ? label : undefined}
-      className={({ isActive }) => `
-        group relative flex items-center
-        ${collapsed ? "justify-center px-0 mx-auto w-11 h-11 rounded-xl" : "justify-between px-3 py-[10px] rounded-xl"}
-        mb-1 transition-all duration-150 cursor-pointer
-        ${isActive
-          ? collapsed
-            ? "bg-[#29354f] text-blue-400 shadow-inner" // Perfect square active background when collapsed
-            : "nav-active-glow text-white"
-          : "text-[#9CA3AF] hover:text-white hover:bg-white/[0.07]"
-        }
-      `}
-    >
-      <div className={`flex items-center ${collapsed ? "justify-center" : "gap-3"}`}>
-        <div className={`flex items-center justify-center flex-shrink-0 ${collapsed ? "w-5 h-5" : "w-[19px]"}`}>
-          {icon}
-        </div>
-        {!collapsed && (
-          <span className="text-[14px] font-medium leading-tight">{label}</span>
+    <div className="px-3 mb-0.5 relative group">
+      <NavLink
+        to={to}
+        className={({ isActive }) => `
+          flex items-center gap-3 px-3 py-[10px] rounded-[12px] transition-all duration-150 text-[13.5px] font-medium
+          ${isActive
+            ? "bg-sky-600/15 text-[#7dd3fc] border border-sky-600/20"
+            : "text-white/60 hover:bg-white/5 hover:text-white border border-transparent"}
+          ${collapsed ? "justify-center px-0 w-11 h-11 mx-auto" : ""}
+        `}
+      >
+        <div className="flex-shrink-0">{icon}</div>
+        {!collapsed && <span className="tracking-wide whitespace-nowrap flex-1">{label}</span>}
+        {!collapsed && badge === "live" && (
+          <span className="border border-sky-500/30 text-sky-400 bg-sky-500/10 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-widest shadow-sm">
+            {badge}
+          </span>
         )}
-      </div>
-      {!collapsed && badge && (
-        <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30
-          text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider">
-          {badge}
-        </span>
+        {!collapsed && badge && badge !== "live" && (
+          <span className="bg-[#0284C7] text-white text-[9px] font-bold px-2 py-0.5 rounded-full lowercase tracking-wide shadow-sm">
+            {badge}
+          </span>
+        )}
+      </NavLink>
+
+      {collapsed && (
+        <div className="absolute left-full ml-3 px-3 py-2 bg-[#12151e] text-white text-xs font-medium rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[100] whitespace-nowrap tooltip-shadow">
+          {label}
+        </div>
       )}
-    </NavLink>
+    </div>
   );
 }
 
 function DropdownMenu({ icon, label, collapsed, isOpen, toggle, children }) {
   return (
     <div className="mb-0.5">
-      <div
-        onClick={toggle}
-        title={collapsed ? label : undefined}
-        className={`
-          group relative flex items-center cursor-pointer
-          ${collapsed ? "justify-center px-0 mx-auto w-11 h-11 rounded-xl" : "justify-between px-3 py-[10px] rounded-xl"}
-          mb-1 transition-all duration-150
-          ${isOpen
-            ? collapsed 
-               ? "bg-white/10 text-white shadow-inner" // Perfect square active background for open menu
-               : "text-white bg-white/[0.07]"
-            : "text-[#9CA3AF] hover:text-white hover:bg-white/[0.07]"
-          }
-        `}
-      >
-        <div className={`flex items-center ${collapsed ? "justify-center" : "gap-3"}`}>
-          <div className={`flex items-center justify-center flex-shrink-0 ${collapsed ? "w-5 h-5" : "w-[19px]"}`}>
-            {icon}
-          </div>
+      <div className="px-3 relative group">
+        <button
+          onClick={toggle}
+          className={`
+            w-full flex items-center gap-3 px-3 py-[10px] rounded-[12px] transition-all duration-150 text-[13.5px] font-medium border border-transparent
+            ${isOpen
+              ? "text-[#7dd3fc] bg-white/5"
+              : "text-white/60 hover:bg-white/5 hover:text-white"}
+            ${collapsed ? "justify-center px-0 w-11 h-11 mx-auto" : ""}
+          `}
+        >
+          <div className="flex-shrink-0">{icon}</div>
+          {!collapsed && <span className="tracking-wide text-left flex-1">{label}</span>}
           {!collapsed && (
-            <span className="text-[14px] font-medium leading-tight">{label}</span>
+            <ChevronRight size={13} className={`transition-transform duration-200 ${isOpen ? "rotate-90 text-[#0284C7]" : "text-white/30 group-hover:text-white"}`} />
           )}
-        </div>
-        {!collapsed && (
-          <ChevronDown
-            size={14}
-            className={`text-[#4B5563] transition-transform duration-200
-              ${isOpen ? "rotate-180 !text-slate-400" : ""}`}
-          />
+        </button>
+
+        {collapsed && (
+          <div className="absolute left-full ml-3 px-3 py-2 bg-[#12151e] text-white text-xs font-medium rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-[100] whitespace-nowrap tooltip-shadow">
+            {label}
+          </div>
         )}
       </div>
 
-      {isOpen && !collapsed && (
-        <div className="ml-7 mt-0.5 mb-1 pl-3.5 border-l border-white/[0.07] space-y-0.5">
+      {!collapsed && isOpen && (
+        <div className="mt-1 pb-1 animate-in slide-in-from-top-2 duration-200">
           {children}
         </div>
       )}
@@ -422,31 +430,29 @@ function DropdownMenu({ icon, label, collapsed, isOpen, toggle, children }) {
   );
 }
 
-function NestedDropdown({ label, isOpen, toggle, children }) {
+function NestedDropdown({ label, isOpen, toggle, icon, children }) {
   return (
     <div className="mb-0.5">
-      <div
-        onClick={toggle}
-        className={`
-          flex items-center justify-between
-          px-2.5 py-2 rounded-lg cursor-pointer
-          transition-all duration-150 text-[13px] font-medium
-          ${isOpen
-            ? "text-slate-200 bg-white/[0.05]"
-            : "text-[#6B7280] hover:text-slate-200 hover:bg-white/[0.04]"
-          }
-        `}
-      >
-        <span>{label}</span>
-        <ChevronDown
-          size={12}
-          className={`text-[#4B5563] transition-transform duration-200
-            ${isOpen ? "rotate-180 !text-slate-400" : ""}`}
-        />
+      <div className="px-3">
+        <button
+          onClick={toggle}
+          className={`
+            group w-full flex items-center justify-between px-3 py-[9px] pl-8 rounded-[10px] text-[13px] font-medium transition-all duration-150
+            ${isOpen ? "text-[#7dd3fc]" : "text-white/50 hover:bg-white/5 hover:text-white"}
+          `}
+        >
+          <div className="flex items-center gap-2.5">
+            <div className={`flex-shrink-0 transition-colors ${isOpen ? "text-[#0284C7]" : "text-white/20 group-hover:text-white/60"}`}>
+              {icon}
+            </div>
+            <span>{label}</span>
+          </div>
+          <ChevronRight size={13} className={`transition-transform duration-200 ${isOpen ? "rotate-90 text-[#0284C7]" : "text-white/20 group-hover:text-white/60"}`} />
+        </button>
       </div>
 
       {isOpen && (
-        <div className="ml-3 mt-0.5 mb-1 pl-3 border-l border-white/[0.05] space-y-0.5">
+        <div className="mt-0.5 animate-in slide-in-from-top-1 duration-200">
           {children}
         </div>
       )}
@@ -454,22 +460,28 @@ function NestedDropdown({ label, isOpen, toggle, children }) {
   );
 }
 
-// ✅ Corrected SubLink matching the exact styling requested from the screenshot
-function SubLink({ to, label }) {
+function SubLink({ to, label, nested, icon }) {
   return (
-    <NavLink
-      to={to}
-      className={({ isActive }) => `
-        block px-3 py-[8px] rounded-lg
-        text-[13px] leading-snug
-        transition-all duration-150 cursor-pointer
-        ${isActive
-          ? "text-[#60a5fa] bg-[#29354f] font-semibold shadow-inner" 
-          : "text-[#6B7280] hover:text-slate-200 hover:bg-white/[0.04]"
-        }
-      `}
-    >
-      {label}
-    </NavLink>
+    <div className="px-3 mb-0.5">
+      <NavLink
+        to={to}
+        className={({ isActive }) => `
+          group flex items-center w-full px-3 py-[8px] rounded-[10px] text-[13px] font-medium transition-all duration-150
+          ${nested ? "pl-10" : "pl-8"}
+          ${isActive
+            ? "bg-sky-600/10 text-[#7dd3fc]"
+            : "text-white/40 hover:bg-white/5 hover:text-[#7dd3fc]"}
+        `}
+      >
+        {({ isActive }) => (
+          <div className="flex items-center gap-2.5">
+            <div className={`flex-shrink-0 transition-colors ${isActive ? "text-[#0284C7]" : "text-white/20 group-hover:text-[#7dd3fc]"}`}>
+              {icon}
+            </div>
+            <span className="truncate">{label}</span>
+          </div>
+        )}
+      </NavLink>
+    </div>
   );
 }

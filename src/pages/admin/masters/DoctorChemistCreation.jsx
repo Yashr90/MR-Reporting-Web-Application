@@ -1,86 +1,452 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
-  Loader2, MapPin, Map, User, MapPinned, Save, CheckCircle2,
-  Phone, Fingerprint, Hash, GraduationCap, Star, Tag, RotateCw, BookUser, Baby, CalendarDays, Clock,
-  Store, Building2, UserCircle, CreditCard, Landmark, Trash2, PlusCircle, XCircle,
-  Stethoscope, Beaker, Mail,
-  ChevronDown, ChevronLeft, ChevronRight, Calendar, Check
+  Loader2, Save, Edit2, Trash2, BookUser, Baby, CalendarDays, Clock,
+  Check, AlertCircle, PlusCircle, XCircle, Stethoscope, Beaker, ChevronLeft, ChevronRight, ChevronDown
 } from "lucide-react";
 import api from "../../../services/api";
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const DAYS   = ["Su","Mo","Tu","We","Th","Fr","Sa"];
 
-/* ─── Global responsive styles ───────────────────────────────────────────── */
+/* ─── Premium UI Styles & Utilities ──────────────────────────────────────── */
 const STYLES = `
-  *, *::before, *::after { box-sizing: border-box; }
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght=500;600;700;800&family=Inter:wght=400;500;600;700&display=swap');
 
-  .dc-wrap  { width:100%; padding-bottom:48px; font-family:Inter,sans-serif; }
-  .dc-card  { background:#fff; border-radius:16px; box-shadow:0 1px 4px rgba(0,0,0,0.07); border:1px solid #f3f4f6; overflow:visible; }
-  .dc-header{ padding:16px 20px; border-bottom:1px solid #f3f4f6; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
-  .dc-body  { padding:24px; }
-  .dc-footer{ padding:14px 24px; background:#f9fafb; border-top:1px solid #f3f4f6; display:flex; align-items:center; justify-content:flex-end; border-radius:0 0 16px 16px; }
-  .dc-divider{ border:none; border-top:1px solid #f3f4f6; margin:0 0 20px; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  /* 4 cols desktop */
-  .dc-grid  { display:grid; grid-template-columns:repeat(4,1fr); gap:20px; margin-bottom:20px; }
-  .dc-grid-3{ display:grid; grid-template-columns:repeat(3,1fr); gap:20px; margin-bottom:20px; }
-  .dc-grid-2{ display:grid; grid-template-columns:repeat(2,1fr); gap:20px; margin-bottom:20px; }
-
-  /* 2 cols tablet */
-  @media(max-width:1024px){
-    .dc-grid, .dc-grid-3 { grid-template-columns:repeat(2,1fr); gap:16px; margin-bottom:16px; }
-    .dc-grid-2            { grid-template-columns:repeat(2,1fr); gap:16px; margin-bottom:16px; }
-    .dc-body  { padding:18px; }
-    .dc-footer{ padding:12px 18px; }
-    .dc-header{ padding:14px 18px; }
+  .dc-wrap {
+    font-family: 'Inter', sans-serif;
+    width: 100%;
   }
 
-  /* 1 col mobile */
-  @media(max-width:600px){
-    .dc-grid, .dc-grid-3, .dc-grid-2 { grid-template-columns:1fr; gap:12px; margin-bottom:14px; }
-    .dc-body  { padding:14px; }
-    .dc-footer{ padding:12px 14px; }
-    .dc-header{ padding:12px 14px; }
-    .dc-submit-btn{ width:100%; justify-content:center; }
+  .ucr-brand { font-family: 'Plus Jakarta Sans', sans-serif; }
+
+  /* ── Single Unified Card Container (No background template bleed) ── */
+  .dc-card {
+    background: #ffffff;
+    border: 1px solid #edf2f7;
+    border-radius: 16px;
+    isolation: isolate;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+    position: relative;
   }
 
-  /* Calendar popup */
+  /* ── Card Header ── */
+  .dc-header {
+    padding: 24px 28px 16px;
+    background: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+    border-top-left-radius: 16px !important;
+    border-top-right-radius: 16px !important;
+  }
+
+  .dc-page-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #3B82F6, #2563eb);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 3px 8px rgba(59,130,246,0.2);
+    flex-shrink: 0;
+  }
+
+  /* ── Form Body ── */
+  .dc-body { padding: 20px 28px 24px; background: #ffffff; }
+
+  /* ── Form Footer ── */
+  .dc-footer {
+    padding: 20px 28px 24px;
+    background: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    border-radius: 0 0 16px 16px;
+    border-top: 1px solid #f1f5f9;
+  }
+
+  .dc-divider {
+    border: none;
+    border-top: 1px solid #f1f5f9;
+    margin: 24px 0 28px;
+  }
+
+  /* ── Responsive Input Grids ── */
+  .dc-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
+    margin-bottom: 25px;
+  }
+  .dc-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    margin-bottom: 25px;
+  }
+  .dc-grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
+    margin-bottom: 25px;
+  }
+
+  @media(max-width: 1200px) {
+    .dc-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+  @media(max-width: 900px) {
+    .dc-grid, .dc-grid-3 { grid-template-columns: repeat(2, 1fr); gap: 20px; }
+    .dc-grid-2 { grid-template-columns: repeat(2, 1fr); gap: 20px; }
+  }
+  @media(max-width: 640px) {
+    .dc-grid, .dc-grid-3, .dc-grid-2 { grid-template-columns: 1fr; gap: 20px; }
+    .dc-body { padding: 20px 16px; }
+    .dc-header { padding: 20px 16px 12px; }
+    .dc-footer { padding: 16px; }
+    .dc-submit-btn { width: 100%; justify-content: center !important; }
+  }
+
+  /* ── Dropdown list ── */
+  .dc-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    width: 100%;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+    z-index: 9999 !important;
+    overflow: hidden;
+  }
+
+  .dc-dropdown ul {
+    max-height: 220px;
+    overflow-y: auto;
+    padding: 6px;
+    margin: 0;
+    list-style: none;
+    scrollbar-width: thin;
+    scrollbar-color: #e2e8f0 transparent;
+  }
+
+  .dc-dropdown ul::-webkit-scrollbar { width: 4px; }
+  .dc-dropdown ul::-webkit-scrollbar-track { background: transparent; }
+  .dc-dropdown ul::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
+
+  .dc-opt {
+    padding: 8px 12px;
+    font-size: 13.5px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #475569;
+    transition: all 0.12s;
+    font-weight: 500;
+  }
+  .dc-opt:hover   { background: rgba(59,130,246,0.06); color: #2563eb; }
+  .dc-opt.selected { background: rgba(59,130,246,0.08); color: #2563eb; font-weight: 600; }
+
+  /* ── Forced Browser Autocomplete/Autofill Override ── */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover, 
+  input:-webkit-autofill:focus, 
+  input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+    box-shadow: 0 0 0 1000px #ffffff inset !important;
+    -webkit-text-fill-color: #1e293b !important;
+    transition: background-color 5000s ease-in-out 0s;
+  }
+
+  /* ── Premium Calendar Panel ── */
   .dc-cal {
-    position:absolute; top:calc(100% + 6px); left:0;
-    width:260px; background:#fff; border-radius:14px;
-    border:1.5px solid #e5e7eb;
-    box-shadow:0 12px 32px rgba(0,0,0,0.14),0 2px 8px rgba(0,0,0,0.06);
-    z-index:9999; overflow:hidden;
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    width: 290px;
+    background: #ffffff;
+    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.02);
+    z-index: 9999;
+    overflow: hidden;
+    padding: 16px;
+    animation: dc-cal-pop 0.18s cubic-bezier(0.16, 1, 0.3, 1);
   }
-  @media(max-width:600px){
-    .dc-cal { width:220px; left:50%; transform:translateX(-50%); }
+
+  @keyframes dc-cal-pop {
+    from { opacity: 0; transform: translateY(4px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
   }
 
-  .dc-section-title { font-size:14px; font-weight:700; color:#111827; display:flex; align-items:center; gap:8px; margin-bottom:16px; }
-  .dc-additional-box { border-top:1px solid #f3f4f6; padding-top:16px; margin-top:4px; }
-  .dc-conditional-box { border-left:3px solid #2563eb; padding-left:16px; margin-top:16px; }
+  @media(max-width: 640px) {
+    .dc-cal { width: 280px; left: 50%; transform: translateX(-50%); }
+  }
 
-  .dc-dynamic-row { display:flex; align-items:flex-start; gap:12px; background:#f9fafb; padding:14px; border-radius:10px; border:1px solid #f3f4f6; position:relative; margin-bottom:10px; }
-  .dc-dynamic-row:hover .dc-remove-btn { opacity:1; }
-  .dc-remove-btn { position:absolute; top:-10px; right:-10px; background:#fee2e2; border:none; border-radius:50%; padding:4px; cursor:pointer; color:#ef4444; opacity:0; transition:opacity 0.15s; display:flex; align-items:center; justify-content:center; }
+  .dc-cal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
 
-  .dc-slot-row { display:flex; align-items:flex-start; gap:10px; background:#fff; padding:10px 12px; border-radius:8px; border:1px solid #f3f4f6; margin-bottom:8px; }
-  .dc-slot-row:hover { border-color:#bfdbfe; }
+  .dc-cal-nav-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #475569;
+    transition: all 0.15s ease;
+  }
+
+  .dc-cal-nav-btn:hover {
+    background: #f1f5f9;
+    color: #1e293b;
+    border-color: #cbd5e1;
+  }
+
+  .dc-cal-select-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .dc-cal-select-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .dc-cal-native-select {
+    appearance: none;
+    -webkit-appearance: none;
+    background: #f8fafc;
+    color: #2563eb;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 4px 22px 4px 10px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+    font-family: 'Inter', sans-serif;
+    transition: all 0.15s ease;
+  }
+
+  .dc-cal-native-select:hover {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+  }
+
+  .dc-cal-weekday-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    text-align: center;
+    margin-bottom: 6px;
+  }
+
+  .dc-cal-weekday {
+    font-size: 11px;
+    font-weight: 600;
+    color: #94a3b8;
+    padding: 4px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+
+  .dc-cal-days-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    row-gap: 4px;
+    column-gap: 4px;
+    text-align: center;
+  }
+
+  .dc-cal-day-cell {
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    border: none;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    background: transparent;
+    color: #334155;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Inter', sans-serif;
+    transition: all 0.12s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .dc-cal-day-cell:hover:not(.selected) {
+    background: #f1f5f9;
+    color: #0f172a;
+  }
+
+  .dc-cal-day-cell.today:not(.selected) {
+    color: #3B82F6;
+    font-weight: 700;
+    background: rgba(59, 130, 246, 0.08);
+  }
+
+  .dc-cal-day-cell.selected {
+    background: #3B82F6 !important;
+    color: #ffffff !important;
+    font-weight: 600;
+    box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
+  }
+
+  /* ── System Error Banner ── */
+  .dc-error-banner {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 12px;
+    padding: 12px 16px;
+    color: #dc2626;
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  /* ── Submission Button ── */
+  .dc-submit-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    background: linear-gradient(135deg, #3B82F6, #2563eb);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(59,130,246,0.2);
+    transition: all 0.2s;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    letter-spacing: 0.01em;
+    height: 40px;
+  }
+  .dc-submit-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(59,130,246,0.3);
+    background: linear-gradient(135deg, #60a5fa, #3B82F6);
+  }
+  .dc-submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .dc-overlay {
+    position: fixed; inset: 0; z-index: 1000;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(15,23,42,0.3);
+    backdrop-filter: blur(4px);
+    padding: 16px;
+  }
+
+  .dc-popup {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.1);
+    padding: 36px 32px;
+    max-width: 360px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    animation: dc-zoom 0.22s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  .dc-additional-box { border-top: 1px solid #f1f5f9; padding-top: 16px; margin-top: 4px; }
+  .dc-conditional-box { border-left: 3px solid #3B82F6; padding-left: 16px; margin-top: 20px; }
+
+  .dc-dynamic-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    background: #f8fafc;
+    padding: 16px;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    position: relative;
+    margin-bottom: 14px;
+  }
+  .dc-dynamic-row:hover .dc-remove-btn { opacity: 1; transform: scale(1); }
+  
+  .dc-remove-btn {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #fef2f2;
+    border: 1px solid #fca5a5;
+    border-radius: 50%;
+    padding: 5px;
+    cursor: pointer;
+    color: #ef4444;
+    opacity: 0;
+    transform: scale(0.9);
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  }
+  .dc-remove-btn:hover { background: #fee2e2; color: #dc2626; }
+
+  .dc-slot-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: #ffffff;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    margin-bottom: 8px;
+  }
+  .dc-slot-row:hover { border-color: #bfdbfe; }
+
+  .dc-field-wrap { display: flex; flex-direction: column; gap: 4px; position: relative; }
+  .dc-field-error { font-size: 11px; color: #dc2626; font-weight: 500; padding-left: 4px; }
 
   @keyframes dc-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+  @keyframes dc-zoom { from{opacity:0;transform:scale(0.88)} to{opacity:1;transform:scale(1)} }
 `;
 
-const FH = 36;
+const FH = 40;
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   MAIN COMPONENT
-═══════════════════════════════════════════════════════════════════════════ */
+const fieldBase = {
+  width: "100%",
+  height: FH,
+  borderRadius: 8,
+  fontSize: 14,
+  color: "#1e293b",
+  outline: "none",
+  boxSizing: "border-box",
+  transition: "all 0.18s",
+  fontFamily: "'Inter', sans-serif",
+};
+
 export default function DoctorChemistCreation() {
   const [isLoading,    setIsLoading]    = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error,        setError]        = useState("");
-  const [successMsg,   setSuccessMsg]   = useState("");
+  const [popup,        setPopup]        = useState({ isOpen: false, message: "" });
 
   const [providerType, setProviderType] = useState("Doctor");
   const [showFamilyInfo, setShowFamilyInfo] = useState(false);
@@ -249,7 +615,7 @@ export default function DoctorChemistCreation() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError(""); setSuccessMsg("");
+    setError("");
     const hasErrors = Object.values(fieldErrors).some(err => err !== "");
     if (hasErrors) { setError("Please fix highlighted errors before saving."); window.scrollTo({top:0,behavior:'smooth'}); return; }
     if (formData.phone   && formData.phone.length   < 10) return setError("Phone must be 10 digits.");
@@ -265,7 +631,7 @@ export default function DoctorChemistCreation() {
           phone: formData.phone||null, gender: formData.gender||null,
           address: formData.address||null,
           licenceNo: showOtherInfo ? (formData.licenceNo||null) : null,
-          email:     showOtherInfo ? (formData.email||null)     : null,
+          email:      showOtherInfo ? (formData.email||null)     : null,
           frequencyVisit: formData.frequencyVisit ? parseInt(formData.frequencyVisit) : null,
           aadhaarNo: formData.aadhaar||null,
           stateId: parseInt(formData.stateId), districtId: parseInt(formData.districtId),
@@ -286,7 +652,7 @@ export default function DoctorChemistCreation() {
           providerName: formData.chemistName, phone: formData.phone||null,
           address: formData.address||null, city: formData.city||null,
           category: formData.chemistCategory||null,
-          gender:     showOtherInfo ? (formData.gender||null)             : null,
+          gender:      showOtherInfo ? (formData.gender||null)             : null,
           aadhaarNo:  showOtherInfo ? (formData.aadhaar||null)            : null,
           ownerName:  showOtherInfo ? (formData.ownerName||null)          : null,
           ownerDob:   showOtherInfo ? (formData.ownerDob||null)           : null,
@@ -300,11 +666,10 @@ export default function DoctorChemistCreation() {
         response = await api.post('/api/masters/providers', providerPayload);
       }
       if (response.status===200||response.status===201||response.data?.success) {
-        setSuccessMsg(`${providerType} created successfully!`);
+        setPopup({ isOpen: true, message: `${providerType} created successfully!` });
         setFormData(emptyFormData);
         setShowFamilyInfo(false); setShowOtherInfo(false);
         window.scrollTo({top:0,behavior:'smooth'});
-        setTimeout(() => setSuccessMsg(""), 4000);
       }
     } catch (err) {
       setError(err.response?.data?.message || `Failed to save ${providerType}.`);
@@ -312,39 +677,35 @@ export default function DoctorChemistCreation() {
     } finally { setIsSubmitting(false); }
   };
 
-  /* ── geo select helpers (wrap native onChange for FSelect) ── */
   const geoChange = (name) => (e) => handleGeographicChange({ target:{ name, value: e.target.value } });
 
   return (
     <div className="dc-wrap">
       <style>{STYLES}</style>
 
-      {successMsg && (
-        <div style={{ background:"#eff6ff", border:"1px solid #bfdbfe", borderRadius:12, padding:"10px 16px", display:"flex", alignItems:"center", gap:10, color:"#1d4ed8", fontSize:13, fontWeight:600, marginBottom:16 }}>
-          <CheckCircle2 size={18}/> {successMsg}
-        </div>
-      )}
       {error && (
-        <div style={{ background:"#fef2f2", border:"1px solid #fecaca", borderRadius:12, padding:"10px 16px", color:"#dc2626", fontSize:13, fontWeight:600, marginBottom:16 }}>
+        <div className="dc-error-banner">
+          <AlertCircle size={15} style={{ flexShrink: 0 }} />
           {error}
         </div>
       )}
 
+      {/* ── Single Unified Card Container ── */}
       <div className="dc-card">
         {/* Header */}
         <div className="dc-header">
-          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-            <div style={{ width:36, height:36, borderRadius:10, background:"#eff6ff", border:"1px solid #dbeafe", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-              <BookUser size={17} style={{ color:"#2563eb" }}/>
+          <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+            <div className="dc-page-icon">
+              <BookUser size={16} color="#fff" />
             </div>
             <div>
-              <h2 style={{ fontSize:15, fontWeight:700, color:"#111827", margin:0 }}>Add New Provider (Doctor / Chemist)</h2>
-              <p style={{ fontSize:11, color:"#6b7280", margin:0, marginTop:2 }}>Select type and fill in the details</p>
+              <h1 className="ucr-brand" style={{ fontSize:16, fontWeight:700, color:"#1e293b", letterSpacing:"-0.01em", lineHeight:1.2 }}>Add New Provider (Doctor / Chemist)</h1>
+              <p style={{ fontSize:12, color:"#94a3b8", marginTop:2 }}>Select type and fill in the details</p>
             </div>
           </div>
 
-          {/* Provider Type — radio button style */}
-          <div style={{ display:"flex", alignItems:"center", gap:20, background:"#f9fafb", border:"1px solid #e5e7eb", borderRadius:10, padding:"8px 16px" }}>
+          {/* Provider Type Selection */}
+          <div style={{ display:"flex", alignItems:"center", gap:20, background:"#f8fafc", border:"1px solid #edf2f7", borderRadius:10, padding:"8px 16px" }}>
             {[
               { key:"Doctor",  label:"Doctor" },
               { key:"Chemist", label:"Chemist / Stockist" },
@@ -352,13 +713,15 @@ export default function DoctorChemistCreation() {
               <label key={t.key} style={{ display:"flex", alignItems:"center", gap:8, cursor:"pointer" }}>
                 <div style={{
                   width:16, height:16, borderRadius:"50%", flexShrink:0,
-                  border: providerType===t.key ? "2px solid #2563eb" : "2px solid #d1d5db",
+                  border: providerType===t.key ? "2px solid #3B82F6" : "2px solid #cbd5e1",
                   display:"flex", alignItems:"center", justifyContent:"center",
-                  transition:"border-color 0.15s",
+                  background: providerType===t.key ? "rgba(59,130,246,0.1)" : "#fff",
+                  transition:"all 0.15s",
+                  boxShadow: providerType===t.key ? "0 0 0 3px rgba(59,130,246,0.12)" : "none",
                 }}>
-                  {providerType===t.key && <div style={{ width:7, height:7, borderRadius:"50%", background:"#2563eb" }}/>}
+                  {providerType===t.key && <div style={{ width:8, height:8, borderRadius:"50%", background:"#3B82F6" }}/>}
                 </div>
-                <span style={{ fontSize:13, fontWeight: providerType===t.key ? 700 : 500, color: providerType===t.key ? "#111827" : "#6b7280", transition:"all 0.15s" }}>
+                <span className="ucr-brand" style={{ fontSize:13, fontWeight: providerType===t.key ? 700 : 500, color: providerType===t.key ? "#1e293b" : "#64748b", transition:"all 0.15s" }}>
                   {t.label}
                 </span>
                 <input type="radio" name="providerType" value={t.key} checked={providerType===t.key}
@@ -369,18 +732,19 @@ export default function DoctorChemistCreation() {
         </div>
 
         <form onSubmit={handleSubmit}>
+          {/* Form Body Area */}
           <div className="dc-body">
 
             {/* ── Geography ── */}
             <SectionLabel text="Geographic Selection"/>
             <div className="dc-grid">
-              <FSelect label="Select State *" name="stateId" value={formData.stateId} onChange={geoChange("stateId")} required
+              <FSelect label="Select State" name="stateId" value={formData.stateId} onChange={geoChange("stateId")} required
                 options={states.map(s => ({ id:s.id, label:s.state_name }))}/>
-              <FSelect label="Select District *" name="districtId" value={formData.districtId} onChange={geoChange("districtId")} required disabled={!formData.stateId}
+              <FSelect label="Select District" name="districtId" value={formData.districtId} onChange={geoChange("districtId")} required disabled={!formData.stateId}
                 options={districts.map(d => ({ id:d.id, label:d.district_name }))}/>
-              <FSelect label="Select Employee *" name="employeeId" value={formData.employeeId} onChange={geoChange("employeeId")} required disabled={!formData.districtId}
+              <FSelect label="Select Employee" name="employeeId" value={formData.employeeId} onChange={geoChange("employeeId")} required disabled={!formData.districtId}
                 options={employees.map(e => ({ id:e.id, label:e.name }))}/>
-              <FSelect label="Select Area *" name="areaId" value={formData.areaId} onChange={(e) => handleInputChange(e)} required disabled={!formData.employeeId}
+              <FSelect label="Select Area" name="areaId" value={formData.areaId} onChange={(e) => handleInputChange(e)} required disabled={!formData.employeeId}
                 options={areas.map(a => ({ id:a.id, label:a.area_name||a.areaName }))}/>
             </div>
 
@@ -389,23 +753,23 @@ export default function DoctorChemistCreation() {
             {/* ══ DOCTOR SECTION ══ */}
             {providerType === "Doctor" ? (
               <>
-                <SectionLabel text="Main Doctor Information" icon={<Stethoscope size={15} style={{color:"#2563eb"}}/>}/>
+                <SectionLabel text="Main Doctor Information" icon={<Stethoscope size={14} style={{color:"#3B82F6"}}/>}/>
 
                 <div className="dc-grid">
                   <FInput label="Doctor Code"       name="doctorCode"       value={formData.doctorCode}       onChange={handleInputChange}/>
-                  <FInput label="Doctor Name *"     name="doctorName"       value={formData.doctorName}       onChange={handleInputChange} required/>
-                  <FInput label="Doctor MSL No. *"  name="mslNo"            value={formData.mslNo}            onChange={handleInputChange} required/>
+                  <FInput label="Doctor Name"     name="doctorName"       value={formData.doctorName}       onChange={handleInputChange} required/>
+                  <FInput label="Doctor MSL No."  name="mslNo"             value={formData.mslNo}             onChange={handleInputChange} required/>
                   <FInput label="Frequency Visit"   name="frequencyVisit"   value={formData.frequencyVisit}   onChange={handleInputChange} type="number"/>
                 </div>
 
                 <div className="dc-grid">
                   <FSelect label="Category" name="doctorCategory" value={formData.doctorCategory} onChange={(e)=>handleInputChange(e)}
                     options={["A","A+","B","B+","C","Core","SuperCore"].map(c=>({id:c,label:c}))}/>
-                  <FSelect label="Degree *" name="doctorDegree" value={formData.doctorDegree} onChange={(e)=>handleInputChange(e)} required
+                  <FSelect label="Degree" name="doctorDegree" value={formData.doctorDegree} onChange={(e)=>handleInputChange(e)} required
                     options={["DM","MBBS","MCh","MD","MS"].map(d=>({id:d,label:d}))}/>
-                  <FSelect label="Specialization *" name="doctorSpecialization" value={formData.doctorSpecialization} onChange={(e)=>handleInputChange(e)} required
+                  <FSelect label="Specialization" name="doctorSpecialization" value={formData.doctorSpecialization} onChange={(e)=>handleInputChange(e)} required
                     options={["Cardiologist","Critical Care","Dental","Dermatologist(Plastic Surgery)","Diabetologist","Endocrinologist","Gastroenterologist"].map(s=>({id:s,label:s}))}/>
-                  <FSelect label="Gender *" name="gender" value={formData.gender} onChange={(e)=>handleInputChange(e)} required
+                  <FSelect label="Gender" name="gender" value={formData.gender} onChange={(e)=>handleInputChange(e)} required
                     options={["Male","Female","Other"].map(g=>({id:g,label:g}))}/>
                 </div>
 
@@ -417,14 +781,14 @@ export default function DoctorChemistCreation() {
 
                 {/* Additional Info checkboxes */}
                 <div className="dc-additional-box">
-                  <p style={{ fontSize:13, fontWeight:700, color:"#111827", marginBottom:12 }}>Additional Info</p>
+                  <p style={{ fontSize:13, fontWeight:700, color:"#1e293b", marginBottom:12 }}>Additional Info</p>
                   <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
                     {[{label:"Family Info", state:showFamilyInfo, set:setShowFamilyInfo},{label:"Other Info", state:showOtherInfo, set:setShowOtherInfo}].map(({label,state,set}) => (
                       <label key={label} style={{ display:"flex", alignItems:"center", gap:8, cursor:"pointer", width:"fit-content" }}>
-                        <div style={{ width:16, height:16, borderRadius:4, border: state?"none":"1.5px solid #d1d5db", background: state?"#2563eb":"#fff", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                        <div style={{ width:16, height:16, borderRadius:4, border: state?"none":"1.5px solid #cbd5e1", background: state?"#3B82F6":"#fff", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
                           {state && <Check size={10} style={{color:"#fff"}}/>}
                         </div>
-                        <span style={{ fontSize:13, fontWeight:600, color:"#374151" }}>{label}</span>
+                        <span style={{ fontSize:13, fontWeight:600, color:"#475569" }}>{label}</span>
                         <input type="checkbox" checked={state} onChange={e=>set(e.target.checked)} style={{display:"none"}}/>
                       </label>
                     ))}
@@ -452,7 +816,7 @@ export default function DoctorChemistCreation() {
                 {/* Other Info */}
                 {showOtherInfo && (
                   <div className="dc-conditional-box">
-                    <p style={{ fontSize:13, fontWeight:700, color:"#111827", marginBottom:14 }}>Other Info Doctor</p>
+                    <p style={{ fontSize:13, fontWeight:700, color:"#1e293b", marginBottom:14 }}>Other Info Doctor</p>
                     <div className="dc-grid-2">
                       <FInput label="Email"      name="email"      type="email" value={formData.email}      onChange={handleInputChange} error={fieldErrors.email}/>
                       <FInput label="Licence No" name="licenceNo"               value={formData.licenceNo}  onChange={handleInputChange}/>
@@ -487,14 +851,14 @@ export default function DoctorChemistCreation() {
               </>
 
             ) : (
-            /* ══ CHEMIST SECTION ══ */
+            /* ── CHEMIST SECTION ── */
               <>
-                <SectionLabel text="Main Chemist Information" icon={<Beaker size={15} style={{color:"#2563eb"}}/>}/>
+                <SectionLabel text="Main Chemist Information" icon={<Beaker size={14} style={{color:"#3B82F6"}}/>}/>
 
                 <div className="dc-grid">
                   <FInput label="Chemist / Stockist Code"  name="chemistCode"     value={formData.chemistCode}     onChange={handleInputChange}/>
-                  <FInput label="Chemist / Stockist Name *" name="chemistName"    value={formData.chemistName}     onChange={handleInputChange} required/>
-                  <FSelect label="Type *" name="chemistType" value={formData.chemistType} onChange={e=>handleInputChange(e)} required
+                  <FInput label="Chemist / Stockist Name" name="chemistName"     value={formData.chemistName}     onChange={handleInputChange} required/>
+                  <FSelect label="Type" name="chemistType" value={formData.chemistType} onChange={e=>handleInputChange(e)} required
                     options={["Chemist","Stockist"].map(t=>({id:t,label:t}))}/>
                   <FSelect label="Category" name="chemistCategory" value={formData.chemistCategory} onChange={e=>handleInputChange(e)}
                     options={["A","A+","B","B+","C"].map(c=>({id:c,label:c}))}/>
@@ -508,12 +872,12 @@ export default function DoctorChemistCreation() {
 
                 {/* Additional Info checkboxes */}
                 <div className="dc-additional-box">
-                  <p style={{ fontSize:13, fontWeight:700, color:"#111827", marginBottom:12 }}>Additional Info</p>
+                  <p style={{ fontSize:13, fontWeight:700, color:"#1e293b", marginBottom:12 }}>Additional Info</p>
                   <label style={{ display:"flex", alignItems:"center", gap:8, cursor:"pointer", width:"fit-content" }}>
-                    <div style={{ width:16, height:16, borderRadius:4, border: showOtherInfo?"none":"1.5px solid #d1d5db", background: showOtherInfo?"#2563eb":"#fff", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                    <div style={{ width:16, height:16, borderRadius:4, border: showOtherInfo?"none":"1.5px solid #cbd5e1", background: showOtherInfo?"#3B82F6":"#fff", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
                       {showOtherInfo && <Check size={10} style={{color:"#fff"}}/>}
                     </div>
-                    <span style={{ fontSize:13, fontWeight:600, color:"#374151" }}>Other Info</span>
+                    <span style={{ fontSize:13, fontWeight:600, color:"#475569" }}>Other Info</span>
                     <input type="checkbox" checked={showOtherInfo} onChange={e=>setShowOtherInfo(e.target.checked)} style={{display:"none"}}/>
                   </label>
                 </div>
@@ -521,7 +885,7 @@ export default function DoctorChemistCreation() {
                 {/* Chemist Other Info */}
                 {showOtherInfo && (
                   <div className="dc-conditional-box">
-                    <p style={{ fontSize:13, fontWeight:700, color:"#111827", marginBottom:14 }}>Chemist Other Info</p>
+                    <p style={{ fontSize:13, fontWeight:700, color:"#1e293b", marginBottom:14 }}>Chemist Other Info</p>
                     <div className="dc-grid">
                       <FInput label="Owner Name" name="ownerName" value={formData.ownerName} onChange={handleInputChange}/>
                       <FDatePicker label="Owner DOB" value={formData.ownerDob} onChange={v=>setFormData(p=>({...p,ownerDob:v}))}/>
@@ -530,7 +894,7 @@ export default function DoctorChemistCreation() {
                     </div>
                     <div className="dc-grid">
                       <FInput label="Aadhaar"  name="aadhaar" type="text" value={formData.aadhaar}  onChange={handleInputChange} error={fieldErrors.aadhaar}/>
-                      <FSelect label="Gender *" name="gender" value={formData.gender} onChange={e=>handleInputChange(e)} required
+                      <FSelect label="Gender" name="gender" value={formData.gender} onChange={e=>handleInputChange(e)} required
                         options={["Male","Female","Other"].map(g=>({id:g,label:g}))}/>
                       <FInput label="Email"    name="email"   type="email" value={formData.email}    onChange={handleInputChange} error={fieldErrors.email}/>
                       <FInput label="PAN Card" name="panCard"              value={formData.panCard}   onChange={handleInputChange} error={fieldErrors.panCard}/>
@@ -546,25 +910,40 @@ export default function DoctorChemistCreation() {
 
           </div>
 
-          {/* Footer */}
+          {/* Action Footer (Perfectly aligned right side inside the layout block) */}
           <div className="dc-footer">
-            <button type="submit" disabled={isSubmitting} className="dc-submit-btn"
-              style={{
-                display:"flex", alignItems:"center", gap:6,
-                padding:"8px 24px", borderRadius:9,
-                fontSize:13, fontWeight:700, border:"none",
-                cursor: isSubmitting?"not-allowed":"pointer",
-                background:"#2563eb", color:"#fff",
-                boxShadow:"0 2px 8px rgba(37,99,235,0.25)",
-                opacity: isSubmitting?0.6:1, transition:"all 0.15s",
-              }}
-            >
+            <button type="submit" disabled={isSubmitting} className="dc-submit-btn">
               {isSubmitting ? <Loader2 size={14} style={{animation:"dc-spin 1s linear infinite"}}/> : <Save size={14}/>}
               Save {providerType}
             </button>
           </div>
         </form>
       </div>
+
+      {/* ── Success Popup ── */}
+      {popup.isOpen && (
+        <div className="dc-overlay">
+          <div className="dc-popup">
+            <div style={{ width:64, height:64, borderRadius:"50%", background:"rgba(59,130,246,0.06)", border:"1px solid rgba(59,130,246,0.25)", display:"flex", alignItems:"center", justifyContent:"center", marginBottom:20 }}>
+              <Check size={28} style={{ color:"#3B82F6", strokeWidth:2.5 }}/>
+            </div>
+            <h3 className="ucr-brand" style={{ fontSize:17, fontWeight:700, color:"#1e293b", textAlign:"center", margin:"0 0 8px", letterSpacing:"-0.01em" }}>Success</h3>
+            <p style={{ fontSize:13, color:"#94a3b8", textAlign:"center", margin:"0 0 24px" }}>{popup.message}</p>
+            <button
+              onClick={() => setPopup({ isOpen: false, message: "" })}
+              style={{
+                background: "linear-gradient(135deg, #3B82F6, #2563eb)", color: "#fff", border: "none", borderRadius: 8,
+                padding: "10px 0", width: "100%", fontSize: 13.5, fontWeight: 600, cursor: "pointer",
+                fontFamily: "'Plus Jakarta Sans', sans-serif", boxShadow: "0 4px 14px rgba(59,130,246,0.2)", transition: "all 0.15s"
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 6px 20px rgba(59,130,246,0.3)"; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 14px rgba(59,130,246,0.2)"; }}
+            >
+              Continue
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -572,10 +951,12 @@ export default function DoctorChemistCreation() {
 /* ─── Section Label ──────────────────────────────────────────────────────── */
 function SectionLabel({ text, icon }) {
   return (
-    <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:16 }}>
-      {icon}
-      <span style={{ fontSize:13, fontWeight:700, color:"#111827", whiteSpace:"nowrap" }}>{text}</span>
-      <div style={{ flex:1, height:1, background:"#e5e7eb" }}/>
+    <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:20, marginTop:4 }}>
+      <div style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"5px 14px", background:"rgba(59,130,246,0.06)", border:"1px solid rgba(59,130,246,0.12)", borderRadius:100, whiteSpace:"nowrap" }}>
+        {icon && <span style={{ color:"#3B82F6", display:"flex", alignItems:"center" }}>{icon}</span>}
+        <span style={{ fontSize:11, fontWeight:600, color:"#2563eb", letterSpacing:"0.04em" }}>{text}</span>
+      </div>
+      <div style={{ flex:1, height:1, background:"#f1f5f9" }}/>
     </div>
   );
 }
@@ -585,12 +966,14 @@ function FInput({ label, name, type="text", value, onChange, required, disabled,
   const [focus, setFocus] = useState(false);
   const hasVal  = Boolean(value?.toString().trim());
   const active  = focus || hasVal;
-  const filled  = hasVal && !disabled;
-  const borderColor = error ? "#ef4444" : (focus||filled) ? "#2563eb" : "#d1d5db";
-  const boxShadow   = focus && !disabled ? (error?"0 0 0 3px rgba(239,68,68,0.08)":"0 0 0 3px rgba(37,99,235,0.08)") : "none";
+
+  const borderColor = error ? "#fca5a5" : focus ? "#3B82F6" : hasVal ? "#bfdbfe" : "#e2e8f0";
+  const bgColor = disabled ? "#f8fafc" : focus ? "#eff6ff" : "#ffffff";
+  const shadow  = focus && !disabled ? (error ? "0 0 0 3px rgba(239,68,68,0.12)" : "0 0 0 3px rgba(59,130,246,0.15)") : "none";
+  const labelColor = error ? "#dc2626" : focus ? "#3B82F6" : hasVal ? "#64748b" : "#94a3b8";
 
   return (
-    <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+    <div className="dc-field-wrap">
       <div style={{ position:"relative", width:"100%", height:FH }}>
         <input
           type={type} id={name} name={name} value={value||""} onChange={onChange}
@@ -598,31 +981,28 @@ function FInput({ label, name, type="text", value, onChange, required, disabled,
           onFocus={()=>setFocus(true)} onBlur={()=>setFocus(false)}
           placeholder=" "
           style={{
-            width:"100%", height:"100%", borderRadius:8, padding:"0 12px",
-            fontSize:13, color:"#111827", outline:"none", boxSizing:"border-box",
-            fontWeight: hasVal ? 600 : 400,
-            background: disabled?"#f9fafb":"#fff",
-            border:`1.5px solid ${disabled?"#d1d5db":borderColor}`,
-            boxShadow: disabled?"none":boxShadow,
-            transition:"all 0.15s",
+            ...fieldBase,
+            padding: "0 12px",
+            background: bgColor,
+            border: `1.5px solid ${borderColor}`,
+            boxShadow: shadow,
+            color: disabled ? "#94a3b8" : "#1e293b",
           }}
         />
         <label style={{
-          position:"absolute", left:10, pointerEvents:"none", zIndex:10,
-          transition:"all 0.15s", fontWeight:600, letterSpacing:"0.03em",
-          top: active ? -9 : 10,
-          fontSize: active ? 10 : 12,
-          color: error?"#ef4444":(focus||filled)?"#2563eb":"#9ca3af",
-          background: active?"#fff":"transparent",
-          padding: active?"0 4px":"0",
-        }}>{label}</label>
+          position:"absolute", left:10, pointerEvents:"none", zIndex:20,
+          transition:"all 0.12s ease-out", fontWeight:500, top: active ? "0" : "50%",
+          transform: active ? "translateY(-50%)" : "translateY(-50%)", fontSize: active ? 11 : 13,
+          color: disabled ? "#cbd5e1" : labelColor, background: active ? "#ffffff" : "transparent",
+          padding: active ? "0 5px" : "0", letterSpacing: active ? "0.02em" : "0",
+        }}>{label}{required ? " *" : ""}</label>
       </div>
-      {error && <p style={{ fontSize:11, color:"#ef4444", fontWeight:600, paddingLeft:4, margin:0 }}>{error}</p>}
+      {error && <p className="dc-field-error">{error}</p>}
     </div>
   );
 }
 
-/* ─── Select ─────────────────────────────────────────────────────────────── */
+/* ─── Searchable Dropdown Selection Component ─── */
 function FSelect({ label, name, value, onChange, required, disabled, options=[] }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -631,14 +1011,15 @@ function FSelect({ label, name, value, onChange, required, disabled, options=[] 
     const h = e => { if(ref.current && !ref.current.contains(e.target)) setOpen(false); };
     document.addEventListener("mousedown",h);
     return ()=>document.removeEventListener("mousedown",h);
-  },[]);
+  }, []);
 
   const selected    = options.find(o => String(o.id)===String(value));
   const hasVal      = Boolean(value);
   const active      = open||hasVal;
-  const filled      = hasVal&&!disabled;
-  const borderColor = (open||filled) ? "#2563eb" : "#d1d5db";
-  const boxShadow   = open&&!disabled ? "0 0 0 3px rgba(37,99,235,0.08)" : "none";
+  const borderColor = open ? "#3B82F6" : hasVal ? "#bfdbfe" : "#e2e8f0";
+  const bgColor     = disabled ? "#f8fafc" : open ? "#eff6ff" : "#ffffff";
+  const shadow      = open && !disabled ? "0 0 0 3px rgba(59,130,246,0.15)" : "none";
+  const labelColor  = open ? "#3B82F6" : hasVal ? "#64748b" : "#94a3b8";
 
   const handleSelect = (optId) => {
     onChange({ target:{ name, value:String(optId) } });
@@ -646,59 +1027,42 @@ function FSelect({ label, name, value, onChange, required, disabled, options=[] 
   };
 
   return (
-    <div ref={ref} style={{ position:"relative", width:"100%", userSelect:"none", zIndex: open?100:1 }}>
+    <div ref={ref} style={{ position:"relative", width:"100%", userSelect:"none", zIndex: open?100:1 }} className="dc-field-wrap">
       <div onClick={()=>{ if(!disabled) setOpen(!open); }}
         style={{
-          width:"100%", height:FH, borderRadius:8, padding:"0 34px 0 12px",
+          width:"100%", height:FH, borderRadius:8, padding:"0 36px 0 12px",
           fontSize:13, display:"flex", alignItems:"center",
-          cursor: disabled?"not-allowed":"pointer",
-          background: disabled?"#f9fafb":"#fff",
-          border:`1.5px solid ${disabled?"#d1d5db":borderColor}`,
-          boxShadow: disabled?"none":boxShadow,
-          transition:"all 0.15s", boxSizing:"border-box",
+          cursor: disabled?"not-allowed":"pointer", background: bgColor,
+          border: `1.5px solid ${disabled ? "#f1f5f9" : borderColor}`,
+          boxShadow: disabled?"none":shadow, transition:"all 0.18s", boxSizing:"border-box",
         }}
       >
-        <span style={{ flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", fontWeight:600, color: hasVal?(disabled?"#9ca3af":"#111827"):"transparent" }}>
+        <span style={{ flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", fontWeight:500, color: hasVal?(disabled?"#94a3b8":"#1e293b"):"transparent", fontSize:14 }}>
           {selected?.label||" "}
         </span>
-        <div style={{ position:"absolute", right:10, top:"50%", transform:"translateY(-50%)", color: open?"#2563eb":"#9ca3af" }}>
-          <ChevronDown size={14} style={{ transform: open?"rotate(180deg)":"rotate(0)", transition:"transform 0.2s" }}/>
+        <div style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", color: open?"#3B82F6":"#94a3b8", transition:"all 0.2s" }}>
+          <ChevronDown size={15} style={{ transform: open?"rotate(180deg)":"rotate(0)", transition:"transform 0.2s" }}/>
         </div>
       </div>
 
       <label style={{
-        position:"absolute", left:10, pointerEvents:"none", zIndex:11,
-        transition:"all 0.15s", fontWeight:600, letterSpacing:"0.03em",
-        top: active?-9:10,
-        fontSize: active?10:12,
-        color: (open||filled)?"#2563eb":"#9ca3af",
-        background: active?"#fff":"transparent",
-        padding: active?"0 4px":"0",
-      }}>{label}</label>
+        position:"absolute", left:10, pointerEvents:"none", zIndex:20,
+        transition:"all 0.12s ease-out", fontWeight:500, top: active ? "0" : "50%",
+        transform: active ? "translateY(-50%)" : "translateY(-50%)", fontSize: active ? 11 : 13,
+        color: disabled ? "#cbd5e1" : labelColor, background: active ? "#ffffff" : "transparent",
+        padding: active ? "0 5px" : "0", letterSpacing: active ? "0.02em" : "0",
+      }}>{label}{required ? " *" : ""}</label>
 
       {open && !disabled && (
-        <div style={{
-          position:"absolute", top:"calc(100% + 5px)", left:0, width:"100%",
-          background:"#fff", border:"1.5px solid #e5e7eb", borderRadius:10,
-          boxShadow:"0 8px 24px rgba(0,0,0,0.12)", zIndex:200, overflow:"hidden",
-        }}>
-          <ul style={{ maxHeight:200, overflowY:"auto", padding:"4px 0", margin:0, listStyle:"none" }}>
-            {options.length===0 && <li style={{ padding:"10px 12px", fontSize:12, color:"#9ca3af", fontStyle:"italic" }}>No options</li>}
+        <div className="dc-dropdown">
+          <ul>
+            {options.length===0 && <li style={{ padding:"12px", fontSize:12, color:"#94a3b8", fontStyle:"italic" }}>No options available</li>}
             {options.map(opt => (
               <li key={opt.id}
+                className={`dc-opt${String(value)===String(opt.id)?" selected":""}`}
                 onMouseDown={e=>{ e.preventDefault(); handleSelect(opt.id); }}
-                style={{
-                  padding:"8px 12px", fontSize:13, cursor:"pointer",
-                  display:"flex", alignItems:"center", gap:8,
-                  background: String(value)===String(opt.id)?"#eff6ff":"transparent",
-                  color:      String(value)===String(opt.id)?"#2563eb":"#374151",
-                  fontWeight: String(value)===String(opt.id)?600:400,
-                  transition:"background 0.1s",
-                }}
-                onMouseEnter={e=>{ if(String(value)!==String(opt.id)) e.currentTarget.style.background="#f9fafb"; }}
-                onMouseLeave={e=>{ if(String(value)!==String(opt.id)) e.currentTarget.style.background="transparent"; }}
               >
-                {String(value)===String(opt.id) && <Check size={12} style={{color:"#2563eb",flexShrink:0}}/>}
+                {String(value)===String(opt.id) && <Check size={12} style={{color:"#3B82F6",flexShrink:0}}/>}
                 {opt.label}
               </li>
             ))}
@@ -709,157 +1073,153 @@ function FSelect({ label, name, value, onChange, required, disabled, options=[] 
   );
 }
 
-/* ─── Time Input (no floating label overlap) ─────────────────────────────── */
+/* ─── Time Input Components ─── */
 function FTimeInput({ label, name, value, onChange }) {
   const [focus, setFocus] = useState(false);
   const hasVal      = Boolean(value);
-  const borderColor = (focus || hasVal) ? "#2563eb" : "#d1d5db";
-  const boxShadow   = focus ? "0 0 0 3px rgba(37,99,235,0.08)" : "none";
+  const borderColor = focus ? "#3B82F6" : hasVal ? "#bfdbfe" : "#e2e8f0";
+  const shadow  = focus ? "0 0 0 3px rgba(59,130,246,0.15)" : "none";
+  const labelColor = focus ? "#3B82F6" : hasVal ? "#64748b" : "#94a3b8";
 
   return (
-    <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-      {/* static label above */}
-      <span style={{ fontSize:10, fontWeight:700, color: (focus||hasVal) ? "#2563eb" : "#9ca3af", letterSpacing:"0.04em", paddingLeft:2, transition:"color 0.15s" }}>
-        {label}
-      </span>
+    <div className="dc-field-wrap">
       <div style={{ position:"relative", width:"100%", height:FH }}>
         <input
-          type="time" name={name} value={value||""}
-          onChange={onChange}
+          type="time" id={name} name={name} value={value||""} onChange={onChange}
           onFocus={()=>setFocus(true)} onBlur={()=>setFocus(false)}
+          placeholder=" "
           style={{
-            width:"100%", height:"100%", borderRadius:8, padding:"0 36px 0 10px",
-            fontSize:13, fontWeight: hasVal ? 600 : 400, color: hasVal?"#111827":"#9ca3af",
-            outline:"none", boxSizing:"border-box", background:"#fff",
-            border:`1.5px solid ${borderColor}`,
-            boxShadow, transition:"all 0.15s",
-            fontFamily:"Inter,sans-serif",
+            ...fieldBase,
+            padding: "0 36px 0 12px",
+            background: "#ffffff",
+            border: `1.5px solid ${borderColor}`,
+            boxShadow: shadow,
           }}
         />
-        <div style={{ position:"absolute", right:10, top:"50%", transform:"translateY(-50%)", color: (focus||hasVal)?"#2563eb":"#9ca3af", pointerEvents:"none" }}>
-          <Clock size={13}/>
+        <label style={{
+          position:"absolute", left:10, pointerEvents:"none", zIndex:20,
+          transition:"all 0.12s ease-out", fontWeight:500, top: "0",
+          transform: "translateY(-50%)", fontSize: 11,
+          color: labelColor, background: "#ffffff",
+          padding: "0 5px", letterSpacing: "0.02em",
+        }}>{label}</label>
+        <div style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", color: focus?"#3B82F6":"#cbd5e1", pointerEvents:"none", zIndex:10 }}>
+          <Clock size={14}/>
         </div>
       </div>
     </div>
   );
 }
 
-/* ─── Date Picker ────────────────────────────────────────────────────────── */
-function FDatePicker({ label, value, onChange, disabled }) {
+/* ─── Premium Calendar Component ─── */
+function FDatePicker({ label, value, onChange, disabled, required }) {
   const [open, setOpen] = useState(false);
   const today  = new Date();
-  const parsed = (value && !isNaN(Date.parse(value))) ? new Date(value+"T00:00:00") : today;
-  const [view, setView] = useState({ y:parsed.getFullYear(), m:parsed.getMonth() });
+  const parsed = (value && !isNaN(Date.parse(value))) ? new Date(value + "T00:00:00") : today;
+  const [view, setView] = useState({ y: parsed.getFullYear(), m: parsed.getMonth() });
   const ref = useRef(null);
 
   useEffect(() => {
-    const h = e => { if(ref.current && !ref.current.contains(e.target)) setOpen(false); };
-    document.addEventListener("mousedown",h);
-    return ()=>document.removeEventListener("mousedown",h);
-  },[]);
+    const h = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
 
   const hasVal      = Boolean(value);
-  const active      = open||hasVal;
-  const filled      = hasVal&&!disabled;
-  const borderColor = (open||filled)&&!disabled ? "#2563eb" : "#d1d5db";
-  const boxShadow   = open&&!disabled ? "0 0 0 3px rgba(37,99,235,0.08)" : "none";
+  const active      = open || hasVal;
+  const borderColor = open ? "#3B82F6" : hasVal ? "#bfdbfe" : "#e2e8f0";
+  const bgColor      = disabled ? "#f8fafc" : open ? "#eff6ff" : "#ffffff";
+  const shadow       = open && !disabled ? "0 0 0 3px rgba(59,130,246,0.15)" : "none";
+  const labelColor   = open ? "#3B82F6" : hasVal ? "#64748b" : "#94a3b8";
 
-  const prevMonth = () => setView(v => v.m===0  ? {y:v.y-1,m:11} : {y:v.y,m:v.m-1});
-  const nextMonth = () => setView(v => v.m===11 ? {y:v.y+1,m:0}  : {y:v.y,m:v.m+1});
-  const selectDay = (day) => { const ds=`${view.y}-${String(view.m+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`; onChange(ds); setOpen(false); };
+  const prevMonth = () => setView(v => v.m === 0  ? { y: v.y - 1, m: 11 } : { y: v.y, m: v.m - 1 });
+  const nextMonth = () => setView(v => v.m === 11 ? { y: v.y + 1, m: 0  } : { y: v.y, m: v.m + 1 });
 
-  const firstDow    = new Date(view.y,view.m,1).getDay();
-  const daysInMonth = new Date(view.y,view.m+1,0).getDate();
-  const displayVal  = hasVal ? new Date(value+"T00:00:00").toLocaleDateString("en-GB") : "";
-  const selStr      = d => `${view.y}-${String(view.m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
-  const todayStr    = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
+  const selectDay = (day) => {
+    const ds = `${view.y}-${String(view.m + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    onChange(ds);
+    setOpen(false);
+  };
+
+  const firstDow    = new Date(view.y, view.m, 1).getDay();
+  const daysInMonth = new Date(view.y, view.m + 1, 0).getDate();
+  const displayVal  = hasVal ? new Date(value + "T00:00:00").toLocaleDateString("en-GB") : "";
+  const selStr      = d => `${view.y}-${String(view.m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  const todayStr    = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
   return (
-    <div ref={ref} style={{ position:"relative", width:"100%", userSelect:"none", zIndex: open?100:1 }}>
-      <div onClick={()=>{ if(!disabled) setOpen(!open); }}
+    <div ref={ref} style={{ position: "relative", width: "100%", userSelect: "none", zIndex: open ? 100 : 1 }} className="dc-field-wrap">
+      <div onClick={() => { if (!disabled) setOpen(!open); }}
         style={{
-          width:"100%", height:FH, borderRadius:8, padding:"0 34px 0 12px",
-          fontSize:13, display:"flex", alignItems:"center",
-          cursor: disabled?"not-allowed":"pointer",
-          background: disabled?"#f9fafb":"#fff",
-          border:`1.5px solid ${disabled?"#d1d5db":borderColor}`,
-          boxShadow: disabled?"none":boxShadow,
-          transition:"all 0.15s", boxSizing:"border-box",
+          width: "100%", height: FH, borderRadius: 8, padding: "0 36px 0 12px",
+          fontSize: 13, display: "flex", alignItems: "center",
+          cursor: disabled ? "not-allowed" : "pointer", background: bgColor,
+          border: `1.5px solid ${disabled ? "#f1f5f9" : borderColor}`,
+          boxShadow: disabled ? "none" : shadow, transition: "all 0.18s", boxSizing: "border-box",
         }}
       >
-        <span style={{ flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", fontWeight:600, color: hasVal?"#111827":"transparent" }}>
-          {displayVal||" "}
+        <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 500, color: hasVal ? "#1e293b" : "transparent", fontSize: 14 }}>
+          {displayVal || " "}
         </span>
-        <div style={{ position:"absolute", right:10, top:"50%", transform:"translateY(-50%)", color: open?"#2563eb":"#9ca3af" }}>
-          <Calendar size={14}/>
+        <div style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: open ? "#3B82F6" : "#94a3b8", transition: "color 0.15s" }}>
+          <CalendarDays size={15} />
         </div>
       </div>
 
       <label style={{
-        position:"absolute", left:10, pointerEvents:"none", zIndex:11,
-        transition:"all 0.15s", fontWeight:600, letterSpacing:"0.03em",
-        top: active?-9:10, fontSize: active?10:12,
-        color: (open||filled)&&!disabled?"#2563eb":"#9ca3af",
-        background: active?"#fff":"transparent",
-        padding: active?"0 4px":"0",
-      }}>{label}</label>
+        position: "absolute", left: 10, pointerEvents: "none", zIndex: 20,
+        transition: "all 0.12s ease-out", fontWeight: 500, top: active ? "0" : "50%",
+        transform: active ? "translateY(-50%)" : "translateY(-50%)", fontSize: active ? 11 : 13,
+        color: disabled ? "#cbd5e1" : labelColor, background: active ? "#ffffff" : "transparent",
+        padding: active ? "0 5px" : "0", letterSpacing: active ? "0.02em" : "0",
+      }}>{label}{required ? " *" : ""}</label>
 
       {open && !disabled && (
         <div className="dc-cal">
-          <div style={{ background:"#2563eb", padding:"10px 10px 8px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-            <button onMouseDown={e=>{e.preventDefault();e.stopPropagation();prevMonth();}}
-              style={{ background:"rgba(255,255,255,0.15)", border:"none", borderRadius:6, width:24, height:24, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", color:"#fff", flexShrink:0 }}>
-              <ChevronLeft size={13}/>
+          <div className="dc-cal-header">
+            <button type="button" onMouseDown={e => { e.preventDefault(); e.stopPropagation(); prevMonth(); }} className="dc-cal-nav-btn">
+              <ChevronLeft size={14} />
             </button>
-            <div style={{ display:"flex", alignItems:"center", gap:4 }}>
-              <select value={view.m} onChange={e=>setView({...view,m:Number(e.target.value)})}
-                style={{ background:"rgba(255,255,255,0.15)", color:"#fff", border:"none", borderRadius:6, padding:"2px 4px", fontSize:11, fontWeight:700, cursor:"pointer", outline:"none" }}>
-                {MONTHS.map((m,i)=><option key={i} value={i} style={{color:"#000"}}>{m}</option>)}
-              </select>
-              <select 
-  value={view.y} 
-  onChange={e => setView({...view, y:Number(e.target.value)})}
-  style={{ background:"rgba(255,255,255,0.15)", color:"#fff", border:"none", borderRadius:6, padding:"2px 4px", fontSize:11, fontWeight:700, cursor:"pointer", outline:"none" }}
->
-  {/* Generates years from 1920 to 2050 */}
-  {Array.from({ length: 131 }, (_, i) => 1920 + i).map(y => (
-    <option key={y} value={y} style={{ color:"#000" }}>{y}</option>
-  ))}
-</select>
+            <div className="dc-cal-select-group">
+              <div className="dc-cal-select-wrap">
+                <select value={view.m} onChange={e => setView({ ...view, m: Number(e.target.value) })} className="dc-cal-native-select">
+                  {MONTHS.map((m, i) => (
+                    <option key={i} value={i} style={{ color: "#1e293b", background: "#fff" }}>{m.slice(0, 3)}</option>
+                  ))}
+                </select>
+                <ChevronDown size={10} style={{ position: "absolute", right: 6, top: "50%", transform: "translateY(-50%)", color: "#2563eb", pointerEvents: "none" }} />
+              </div>
+              <div className="dc-cal-select-wrap">
+                <select value={view.y} onChange={e => setView({ ...view, y: Number(e.target.value) })} className="dc-cal-native-select">
+                  {Array.from({ length: 131 }, (_, i) => 1920 + i).map(y => (
+                    <option key={y} value={y} style={{ color: "#1e293b", background: "#fff" }}>{y}</option>
+                  ))}
+                </select>
+                <ChevronDown size={10} style={{ position: "absolute", right: 6, top: "50%", transform: "translateY(-50%)", color: "#2563eb", pointerEvents: "none" }} />
+              </div>
             </div>
-            <button onMouseDown={e=>{e.preventDefault();e.stopPropagation();nextMonth();}}
-              style={{ background:"rgba(255,255,255,0.15)", border:"none", borderRadius:6, width:24, height:24, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", color:"#fff", flexShrink:0 }}>
-              <ChevronRight size={13}/>
+            <button type="button" onMouseDown={e => { e.preventDefault(); e.stopPropagation(); nextMonth(); }} className="dc-cal-nav-btn">
+              <ChevronRight size={14} />
             </button>
           </div>
-          <div style={{ padding:"7px 8px 3px", background:"#f9fafb", borderBottom:"1px solid #f3f4f6" }}>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:1, textAlign:"center" }}>
-              {DAYS.map(d=><div key={d} style={{fontSize:9,fontWeight:700,color:"#9ca3af",padding:"1px 0"}}>{d}</div>)}
-            </div>
+          <div className="dc-cal-weekday-grid">
+            {DAYS.map(d => (
+              <div key={d} className="dc-cal-weekday">{d}</div>
+            ))}
           </div>
-          <div style={{ padding:"5px 8px 8px" }}>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:1, textAlign:"center" }}>
-              {Array.from({length:firstDow}).map((_,i)=><div key={`e${i}`}/>)}
-              {Array.from({length:daysInMonth}).map((_,i)=>{
-                const d=i+1; const ds=selStr(d);
-                const isSel=value===ds; const isToday=ds===todayStr;
-                return (
-                  <button key={d} onMouseDown={e=>{e.preventDefault();e.stopPropagation();selectDay(d);}}
-                    style={{
-                      width:"100%", aspectRatio:"1", borderRadius:"50%", border:"none",
-                      fontSize:10, fontWeight:isSel||isToday?700:400,
-                      cursor:"pointer", transition:"all 0.12s",
-                      background: isSel?"#2563eb":isToday?"#eff6ff":"transparent",
-                      color:      isSel?"#fff":isToday?"#2563eb":"#374151",
-                      boxShadow:  isSel?"0 2px 6px rgba(37,99,235,0.35)":"none",
-                      outline:    isToday&&!isSel?"1.5px solid #bfdbfe":"none", padding:0,
-                    }}
-                    onMouseEnter={e=>{ if(!isSel) e.currentTarget.style.background="#eff6ff"; }}
-                    onMouseLeave={e=>{ if(!isSel) e.currentTarget.style.background=isToday?"#eff6ff":"transparent"; }}
-                  >{d}</button>
-                );
-              })}
-            </div>
+          <div className="dc-cal-days-grid">
+            {Array.from({ length: firstDow }).map((_, i) => <div key={`e${i}`} />)}
+            {Array.from({ length: daysInMonth }).map((_, i) => {
+              const d       = i + 1;
+              const ds      = selStr(d);
+              const isSel   = value === ds;
+              const isToday = ds === todayStr;
+              return (
+                <button key={d} type="button" onMouseDown={e => { e.preventDefault(); e.stopPropagation(); selectDay(d); }}
+                  className={`dc-cal-day-cell ${isSel ? "selected" : ""} ${isToday ? "today" : ""}`}
+                >{d}</button>
+              );
+            })}
           </div>
         </div>
       )}
@@ -867,22 +1227,22 @@ function FDatePicker({ label, value, onChange, disabled }) {
   );
 }
 
-/* ─── Dynamic List Table ─────────────────────────────────────────────────── */
+/* ─── Dynamic List Table ─── */
 function DynamicListTable({ title, icon:Icon, onAdd, list, onRemove, renderInputs }) {
   return (
     <div>
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12, paddingBottom:10, borderBottom:"1px solid #f3f4f6" }}>
-        <p style={{ fontSize:13, fontWeight:700, color:"#111827", display:"flex", alignItems:"center", gap:6, margin:0 }}><Icon size={15}/> {title}</p>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16, paddingBottom:10, borderBottom:"1px solid #f1f5f9" }}>
+        <p className="ucr-brand" style={{ fontSize:14, fontWeight:700, color:"#1e293b", display:"flex", alignItems:"center", gap:8, margin:0 }}><Icon size={15} style={{color:"#3B82F6"}}/> {title}</p>
         <button type="button" onClick={onAdd}
-          style={{ display:"flex", alignItems:"center", gap:5, padding:"5px 12px", borderRadius:8, border:"none", cursor:"pointer", fontSize:12, fontWeight:600, background:"#eff6ff", color:"#2563eb", transition:"all 0.15s" }}
-          onMouseEnter={e=>e.currentTarget.style.background="#dbeafe"}
-          onMouseLeave={e=>e.currentTarget.style.background="#eff6ff"}
+          style={{ display:"flex", alignItems:"center", gap:6, padding:"6px 14px", borderRadius:8, border:"none", cursor:"pointer", fontSize:12, fontWeight:600, background:"rgba(59,130,246,0.06)", border:"1px solid rgba(59,130,246,0.1)", color:"#2563eb", transition:"all 0.15s", fontFamily:"'Plus Jakarta Sans', sans-serif" }}
+          onMouseEnter={e=>e.currentTarget.style.background="rgba(59,130,246,0.1)"}
+          onMouseLeave={e=>e.currentTarget.style.background="rgba(59,130,246,0.06)"}
         >
           <PlusCircle size={13}/> Add Row
         </button>
       </div>
       {(!list||list.length===0) ? (
-        <div style={{ textAlign:"center", padding:"20px 16px", fontSize:12, color:"#9ca3af", background:"#f9fafb", borderRadius:10, border:"1px dashed #e5e7eb" }}>
+        <div style={{ textAlign:"center", padding:"24px 16px", fontSize:13, color:"#94a3b8", background:"#f8fafc", borderRadius:12, border:"1px dashed #e2e8f0" }}>
           No entries added yet. Click 'Add Row' to begin.
         </div>
       ) : (
@@ -901,42 +1261,41 @@ function DynamicListTable({ title, icon:Icon, onAdd, list, onRemove, renderInput
   );
 }
 
-/* ─── Dynamic Time Template ──────────────────────────────────────────────── */
+/* ─── Dynamic Time Template ─── */
 function DynamicListTableTimeTemplate({ title, icon:Icon, onAdd, list, onRemove, renderMainInputs, renderSlotInputs, onAddSlot, onRemoveSlot }) {
   return (
-    <div>
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12, paddingBottom:10, borderBottom:"1px solid #f3f4f6" }}>
-        <p style={{ fontSize:13, fontWeight:700, color:"#111827", display:"flex", alignItems:"center", gap:6, margin:0 }}><Icon size={15}/> {title}</p>
+    <div style={{ marginTop: 20 }}>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16, paddingBottom:10, borderBottom:"1px solid #f1f5f9" }}>
+        <p className="ucr-brand" style={{ fontSize:14, fontWeight:700, color:"#1e293b", display:"flex", alignItems:"center", gap:8, margin:0 }}><Icon size={15} style={{color:"#3B82F6"}}/> {title}</p>
         <button type="button" onClick={onAdd}
-          style={{ display:"flex", alignItems:"center", gap:5, padding:"5px 12px", borderRadius:8, border:"none", cursor:"pointer", fontSize:12, fontWeight:600, background:"#eff6ff", color:"#2563eb", transition:"all 0.15s" }}
-          onMouseEnter={e=>e.currentTarget.style.background="#dbeafe"}
-          onMouseLeave={e=>e.currentTarget.style.background="#eff6ff"}
+          style={{ display:"flex", alignItems:"center", gap:6, padding:"6px 14px", borderRadius:8, border:"none", cursor:"pointer", fontSize:12, fontWeight:600, background:"rgba(59,130,246,0.06)", border:"1px solid rgba(59,130,246,0.1)", color:"#2563eb", transition:"all 0.15s", fontFamily:"'Plus Jakarta Sans', sans-serif" }}
+          onMouseEnter={e=>e.currentTarget.style.background="rgba(59,130,246,0.1)"}
+          onMouseLeave={e=>e.currentTarget.style.background="rgba(59,130,246,0.06)"}
         >
           <PlusCircle size={13}/> Add City/Day Row
         </button>
       </div>
 
       {(!list||list.length===0) ? (
-        <div style={{ textAlign:"center", padding:"20px 16px", fontSize:12, color:"#9ca3af", background:"#f9fafb", borderRadius:10, border:"1px dashed #e5e7eb" }}>
+        <div style={{ textAlign:"center", padding:"24px 16px", fontSize:13, color:"#94a3b8", background:"#f8fafc", borderRadius:12, border:"1px dashed #e2e8f0" }}>
           No entries added yet. Click 'Add City/Day Row' to begin.
         </div>
       ) : (
         <div>
           {list.map((item,timeIndex) => (
-            <div key={timeIndex} style={{ background:"#f9fafb", padding:14, borderRadius:10, border:"1px solid #f3f4f6", marginBottom:12, position:"relative" }}
-              className="dc-dynamic-row" >
+            <div key={timeIndex} className="dc-dynamic-row" style={{ display:"block" }}>
               <div style={{flex:1}}>
                 {/* City & Day */}
-                <div style={{marginBottom:12, paddingBottom:12, borderBottom:"1px solid #f3f4f6"}}>
+                <div style={{marginBottom:14, paddingBottom:14, borderBottom:"1px solid #e2e8f0"}}>
                   {renderMainInputs(item,timeIndex)}
                 </div>
                 {/* Slots */}
-                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
-                  <p style={{ fontSize:12, fontWeight:700, color:"#374151", display:"flex", alignItems:"center", gap:5, margin:0 }}>
-                    <Clock size={13} style={{color:"#6b7280"}}/> Time Slots
+                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
+                  <p style={{ fontSize:13, fontWeight:700, color:"#334155", display:"flex", alignItems:"center", gap:6, margin:0 }}>
+                    <Clock size={14} style={{color:"#64748b"}}/> Time Slots
                   </p>
                   <button type="button" onClick={()=>onAddSlot(timeIndex)}
-                    style={{ display:"flex", alignItems:"center", gap:4, padding:"4px 10px", borderRadius:20, border:"none", cursor:"pointer", fontSize:11, fontWeight:600, background:"#f0fdf4", color:"#16a34a", transition:"all 0.15s" }}
+                    style={{ display:"flex", alignItems:"center", gap:4, padding:"4px 12px", borderRadius:20, border:"none", cursor:"pointer", fontSize:12, fontWeight:600, background:"#f0fdf4", border:"1px solid #bbf7d0", color:"#16a34a", transition:"all 0.15s" }}
                     onMouseEnter={e=>e.currentTarget.style.background="#dcfce7"}
                     onMouseLeave={e=>e.currentTarget.style.background="#f0fdf4"}
                   >
@@ -944,26 +1303,26 @@ function DynamicListTableTimeTemplate({ title, icon:Icon, onAdd, list, onRemove,
                   </button>
                 </div>
                 {(!item.slots||item.slots.length===0) ? (
-                  <div style={{ textAlign:"center", padding:"10px", fontSize:11, color:"#9ca3af", border:"1px dashed #e5e7eb", borderRadius:8 }}>
+                  <div style={{ textAlign:"center", padding:"12px", fontSize:12, color:"#94a3b8", border:"1px dashed #e2e8f0", borderRadius:8, background:"#ffffff" }}>
                     Click 'Add Slot' to begin adding times.
                   </div>
                 ) : (
                   item.slots.map((slotItem,slotIndex) => (
-                    <div key={slotIndex} className="dc-slot-row">
-                      {renderSlotInputs(timeIndex,slotItem,slotIndex)}
+                    <div key={slotIndex} className="dc-slot-row" style={{ alignItems: "center" }}>
+                      <div style={{flex:1, display: "flex", gap: 14}}>{renderSlotInputs(timeIndex,slotItem,slotIndex)}</div>
                       <button type="button" onClick={()=>onRemoveSlot(timeIndex,slotIndex)}
-                        style={{ border:"none", background:"none", cursor:"pointer", color:"#fca5a5", padding:"4px", borderRadius:6, display:"flex", alignItems:"center", flexShrink:0, transition:"color 0.15s", marginTop:18 }}
+                        style={{ border:"none", background:"none", cursor:"pointer", color:"#94a3b8", padding:"6px", borderRadius:8, display:"flex", alignItems:"center", flexShrink:0, transition:"all 0.15s" }}
                         onMouseEnter={e=>e.currentTarget.style.color="#ef4444"}
-                        onMouseLeave={e=>e.currentTarget.style.color="#fca5a5"}
+                        onMouseLeave={e=>e.currentTarget.style.color="#94a3b8"}
                       >
-                        <Trash2 size={14}/>
+                        <Trash2 size={15}/>
                       </button>
                     </div>
                   ))
                 )}
               </div>
               <button type="button" onClick={()=>onRemove(timeIndex)} className="dc-remove-btn">
-                <XCircle size={16}/>
+                <XCircle size={15}/>
               </button>
             </div>
           ))}

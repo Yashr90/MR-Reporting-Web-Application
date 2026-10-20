@@ -1,18 +1,28 @@
 import React, { useState, useEffect } from "react";
-import { 
-  Users, Stethoscope, FileText, IndianRupee, 
-  TrendingUp, AlertCircle, Loader2, Activity
+import {
+  Users, Stethoscope, FileText, IndianRupee,
+  TrendingUp, AlertCircle, Loader2, Activity,
+  ArrowUpRight, Bell
 } from "lucide-react";
-import { 
+import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
   PieChart, Pie, Cell, LineChart, Line
 } from "recharts";
 import api from "../../services/api";
 
+// ─── Custom Tooltip Styles ────────────────────────────────────────────────────
+const tooltipStyle = {
+  borderRadius: "12px",
+  border: "1px solid #e2e8f0",
+  boxShadow: "0 8px 30px rgba(0,0,0,0.08)",
+  padding: "10px 14px",
+  fontSize: "13px",
+  background: "#fff",
+};
+
 export default function AdminDashboard() {
   const [isLoading, setIsLoading] = useState(true);
-  
-  // 📊 Dashboard States (Empty by default, waiting for data)
+
   const [stats, setStats] = useState({ totalMrs: 0, activeMrs: 0, dcrsToday: 0, totalSales: 0 });
   const [targetData, setTargetData] = useState([]);
   const [dcrStatusData, setDcrStatusData] = useState([]);
@@ -22,16 +32,11 @@ export default function AdminDashboard() {
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        setIsLoading(true); // Start the loading spinner
-        
-        // =====================================================================
-        // 🛠️ STEP 1: UNCOMMENT THIS BLOCK WHEN SHUBHAM'S BACKEND IS READY
-        // =====================================================================
+        setIsLoading(true);
+
         /*
         const response = await api.get('/api/admin/dashboard');
-        
         if (response.data.success) {
-          // Update all our state variables with the real data from the database
           setStats(response.data.data.stats);
           setTargetData(response.data.data.targetData);
           setDcrStatusData(response.data.data.dcrStatusData);
@@ -40,15 +45,10 @@ export default function AdminDashboard() {
         }
         */
 
-        // =====================================================================
-        // 🛠️ STEP 2: DELETE EVERYTHING BELOW THIS LINE ONCE THE API IS CONNECTED
-        // =====================================================================
-        
-        // Simulating a small network delay so you can see the loading spinner
         await new Promise(resolve => setTimeout(resolve, 800));
 
         setStats({ totalMrs: 145, activeMrs: 124, dcrsToday: 98, totalSales: 1250000 });
-        
+
         setTargetData([
           { month: "Jan", target: 400000, achieved: 450000 },
           { month: "Feb", target: 450000, achieved: 420000 },
@@ -56,10 +56,10 @@ export default function AdminDashboard() {
         ]);
 
         setDcrStatusData([
-          { name: "Submitted", value: 65, color: "#2DD4BF" },
-          { name: "Pending", value: 20, color: "#FDE047" },
-          { name: "Locked", value: 8, color: "#FCA5A5" },
-          { name: "Leave", value: 5, color: "#9CA3AF" }
+          { name: "Submitted", value: 65, color: "#0d9488" },
+          { name: "Pending", value: 20, color: "#f59e0b" },
+          { name: "Locked", value: 8, color: "#f43f5e" },
+          { name: "Leave", value: 5, color: "#94a3b8" }
         ]);
 
         setVisitTrendData([
@@ -73,14 +73,10 @@ export default function AdminDashboard() {
           { id: 2, msg: "Stock discrepancy reported by Swati", time: "5 hours ago" },
           { id: 3, msg: "Monthly Target data updated", time: "1 day ago" }
         ]);
-        // =====================================================================
-        // 🛠️ END OF TEMPORARY DATA
-        // =====================================================================
 
       } catch (error) {
         console.error("Dashboard fetch error:", error);
       } finally {
-        // Stop the loading spinner whether the API call succeeds OR fails
         setIsLoading(false);
       }
     };
@@ -88,146 +84,304 @@ export default function AdminDashboard() {
     fetchDashboardData();
   }, []);
 
-  // Show a spinner while we wait for the data
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <Loader2 className="animate-spin text-[#FF5722]" size={40} />
+      <div className="flex flex-col items-center justify-center h-full gap-4 min-h-[60vh]">
+        <div className="relative">
+          <div className="w-14 h-14 rounded-full border-4 border-orange-100 border-t-orange-500 animate-spin" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Activity size={18} className="text-orange-500" />
+          </div>
+        </div>
+        <p className="text-sm text-slate-400 font-medium tracking-wide">Loading dashboard…</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div>
-        <h2 className="text-2xl font-bold text-[#1F2937]">Dashboard Overview </h2>
-        <p className="text-gray-500 text-sm mt-1">Real-time tracking of MR performance and DCR statuses.</p>
+    <div className="min-h-full bg-gradient-to-br from-slate-50 via-blue-50/20 to-slate-50 p-6 space-y-7">
+
+      {/* ── Page Header ─────────────────────────────────────────────────────── */}
+      <div className="flex items-start justify-between">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-orange-600 bg-orange-50 border border-orange-100 px-2.5 py-1 rounded-full tracking-wide uppercase">
+              <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
+              Live
+            </span>
+          </div>
+          <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Dashboard Overview</h2>
+          <p className="text-slate-400 text-sm mt-0.5">Real-time tracking of MR performance and DCR statuses.</p>
+        </div>
+
+        <div className="hidden sm:flex items-center gap-3">
+          <div className="text-right">
+            <p className="text-xs text-slate-400 font-medium">Today</p>
+            <p className="text-sm font-semibold text-slate-700">
+              {new Date().toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })}
+            </p>
+          </div>
+          <div className="w-px h-8 bg-slate-200" />
+          <button className="relative p-2.5 rounded-xl bg-white border border-slate-200 shadow-sm text-slate-500 hover:text-orange-600 hover:border-orange-200 hover:shadow-md transition-all duration-200">
+            <Bell size={17} />
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-orange-500 border-2 border-white" />
+          </button>
+        </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard title="Active MRs" value={`${stats.activeMrs} / ${stats.totalMrs}`} subtitle="Available in field" icon={<Users size={24} />} color="text-blue-600 bg-blue-50" />
-        <StatCard title="DCRs Today" value={stats.dcrsToday} subtitle="+12% from yesterday" icon={<FileText size={24} />} color="text-teal-600 bg-teal-50" />
-        <StatCard title="Doctor Visits" value="1,840" subtitle="This week" icon={<Stethoscope size={24} />} color="text-purple-600 bg-purple-50" />
-        <StatCard title="Monthly Sales" value={`₹${(stats.totalSales / 100000).toFixed(1)}L`} subtitle="85% of target" icon={<IndianRupee size={24} />} color="text-green-600 bg-green-50" />
+      {/* ── Summary Cards ───────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+        <StatCard
+          title="Active MRs"
+          value={`${stats.activeMrs} / ${stats.totalMrs}`}
+          subtitle="Available in field"
+          trend="+3 this week"
+          icon={<Users size={20} />}
+          gradient="from-blue-500 to-blue-600"
+          lightBg="bg-blue-50"
+          textColor="text-blue-600"
+          glowColor="shadow-blue-100"
+        />
+        <StatCard
+          title="DCRs Today"
+          value={stats.dcrsToday}
+          subtitle="+12% from yesterday"
+          trend="↑ 12%"
+          icon={<FileText size={20} />}
+          gradient="from-teal-500 to-teal-600"
+          lightBg="bg-teal-50"
+          textColor="text-teal-600"
+          glowColor="shadow-teal-100"
+        />
+        <StatCard
+          title="Doctor Visits"
+          value="1,840"
+          subtitle="This week"
+          trend="↑ 8%"
+          icon={<Stethoscope size={20} />}
+          gradient="from-violet-500 to-violet-600"
+          lightBg="bg-violet-50"
+          textColor="text-violet-600"
+          glowColor="shadow-violet-100"
+        />
+        <StatCard
+          title="Monthly Sales"
+          value={`₹${(stats.totalSales / 100000).toFixed(1)}L`}
+          subtitle="85% of target"
+          trend="85% achieved"
+          icon={<IndianRupee size={20} />}
+          gradient="from-emerald-500 to-emerald-600"
+          lightBg="bg-emerald-50"
+          textColor="text-emerald-600"
+          glowColor="shadow-emerald-100"
+        />
       </div>
 
-      {/* Main Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Target vs Achievement (Bar Chart) */}
-        <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-[#E5E7EB] shadow-sm">
-          <h3 className="text-lg font-bold text-[#1F2937] mb-6 flex items-center gap-2">
-            <TrendingUp size={18} className="text-[#FF5722]" />
-            Target vs Achievement (Quarterly)
-          </h3>
-          <div className="h-72">
+      {/* ── Main Charts Row ──────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+        {/* Target vs Achievement */}
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-lg transition-shadow duration-300 p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-orange-50 border border-orange-100">
+                <TrendingUp size={17} className="text-orange-500" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-800">Target vs Achievement</h3>
+                <p className="text-xs text-slate-400 mt-0.5">Quarterly performance</p>
+              </div>
+            </div>
+            <span className="hidden sm:inline-flex text-xs font-semibold text-slate-500 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-full">
+              Q1 2025
+            </span>
+          </div>
+
+          <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={targetData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#6B7280' }} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6B7280' }} tickFormatter={(val) => `₹${val/1000}k`} dx={-10} />
-                <Tooltip cursor={{ fill: '#F3F4F6' }} contentStyle={{ borderRadius: '8px' }} />
-                <Legend iconType="circle" wrapperStyle={{ paddingTop: '10px' }} />
-                <Bar dataKey="target" name="Target" fill="#9CA3AF" radius={[4, 4, 0, 0]} barSize={30} />
-                <Bar dataKey="achieved" name="Achieved" fill="#FF5722" radius={[4, 4, 0, 0]} barSize={30} />
+              <BarChart data={targetData} barGap={6}>
+                <defs>
+                  <linearGradient id="barTarget" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#cbd5e1" />
+                    <stop offset="100%" stopColor="#e2e8f0" />
+                  </linearGradient>
+                  <linearGradient id="barAchieved" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#ff7043" />
+                    <stop offset="100%" stopColor="#f4511e" />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 500 }} dy={10} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={(val) => `₹${val / 1000}k`} dx={-8} />
+                <Tooltip cursor={{ fill: '#f8fafc', radius: 6 }} contentStyle={tooltipStyle} formatter={(v) => [`₹${(v / 1000).toFixed(0)}k`]} />
+                <Legend iconType="circle" iconSize={8} wrapperStyle={{ paddingTop: "16px", fontSize: "12px", color: "#64748b" }} />
+                <Bar dataKey="target" name="Target" fill="url(#barTarget)" radius={[6, 6, 0, 0]} barSize={28} />
+                <Bar dataKey="achieved" name="Achieved" fill="url(#barAchieved)" radius={[6, 6, 0, 0]} barSize={28} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* DCR Status Breakdown (Donut Chart) */}
-        <div className="bg-white p-6 rounded-xl border border-[#E5E7EB] shadow-sm flex flex-col">
-          <h3 className="text-lg font-bold text-[#1F2937] mb-2 flex items-center gap-2">
-            <FileText size={18} className="text-[#2563EB]" />
-            Today's DCR Status
-          </h3>
-          <div className="flex-1 min-h-[200px]">
+        {/* DCR Status Donut */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-lg transition-shadow duration-300 p-6 flex flex-col">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 rounded-xl bg-blue-50 border border-blue-100">
+              <FileText size={17} className="text-blue-500" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-800">Today's DCR Status</h3>
+              <p className="text-xs text-slate-400 mt-0.5">Breakdown by category</p>
+            </div>
+          </div>
+
+          <div className="flex-1 min-h-[160px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={dcrStatusData} innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
+                <defs>
+                  {dcrStatusData.map((entry, i) => (
+                    <filter key={i} id={`glow-${i}`}>
+                      <feGaussianBlur stdDeviation="3" result="coloredBlur" />
+                      <feMerge><feMergeNode in="coloredBlur" /><feMergeNode in="SourceGraphic" /></feMerge>
+                    </filter>
+                  ))}
+                </defs>
+                <Pie data={dcrStatusData} innerRadius={52} outerRadius={72} paddingAngle={4} dataKey="value" strokeWidth={0}>
                   {dcrStatusData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip contentStyle={{ borderRadius: '8px' }} />
+                <Tooltip contentStyle={tooltipStyle} formatter={(v, n) => [v, n]} />
               </PieChart>
             </ResponsiveContainer>
           </div>
-          {/* Custom Legend */}
-          <div className="grid grid-cols-2 gap-2 mt-4">
+
+          <div className="grid grid-cols-2 gap-2 mt-3">
             {dcrStatusData.map((item) => (
-              <div key={item.name} className="flex items-center gap-2 text-sm">
-                <span className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }}></span>
-                <span className="text-gray-600">{item.name}:</span>
-                <span className="font-semibold text-gray-900">{item.value}</span>
+              <div key={item.name} className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 border border-slate-100">
+                <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
+                <span className="text-xs text-slate-500 truncate">{item.name}</span>
+                <span className="text-xs font-bold text-slate-800 ml-auto">{item.value}</span>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Bottom Row: Line Chart & Alerts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Doctor Visits Trend (Line Chart) */}
-        <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-[#E5E7EB] shadow-sm">
-          <h3 className="text-lg font-bold text-[#1F2937] mb-6 flex items-center gap-2">
-            <Activity size={18} className="text-[#2DD4BF]" />
-            Doctor Visit Trends (Last 7 Days)
-          </h3>
-          <div className="h-60">
+      {/* ── Bottom Row ───────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+        {/* Visit Trend Line Chart */}
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-lg transition-shadow duration-300 p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-teal-50 border border-teal-100">
+                <Activity size={17} className="text-teal-500" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-800">Doctor Visit Trends</h3>
+                <p className="text-xs text-slate-400 mt-0.5">Last 7 days</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 bg-blue-50 border border-blue-100 px-3 py-1.5 rounded-full">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+              Total Visits
+            </div>
+          </div>
+
+          <div className="h-52">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={visitTrendData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: '#6B7280' }} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6B7280' }} dx={-10} />
-                <Tooltip contentStyle={{ borderRadius: '8px' }} />
-                <Line type="monotone" dataKey="visits" name="Total Visits" stroke="#2563EB" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
+                <defs>
+                  <linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.15} />
+                    <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 500 }} dy={10} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} dx={-8} />
+                <Tooltip contentStyle={tooltipStyle} />
+                <Line
+                  type="monotone"
+                  dataKey="visits"
+                  name="Total Visits"
+                  stroke="#3b82f6"
+                  strokeWidth={2.5}
+                  dot={{ r: 4, fill: "#fff", stroke: "#3b82f6", strokeWidth: 2.5 }}
+                  activeDot={{ r: 6, fill: "#3b82f6", stroke: "#fff", strokeWidth: 2 }}
+                />
               </LineChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Alerts Widget */}
-        <div className="bg-white p-6 rounded-xl border border-[#E5E7EB] shadow-sm">
-          <h3 className="text-lg font-bold text-[#1F2937] mb-4 flex items-center gap-2">
-            <AlertCircle size={18} className="text-red-500" />
-            System Alerts
-          </h3>
-          <div className="space-y-3 overflow-y-auto max-h-60 custom-scrollbar pr-2">
-            {recentAlerts.map((alert) => (
-              <div key={alert.id} className="flex items-start gap-3 bg-red-50 p-3 rounded-lg border border-red-100">
-                <div className="flex-1">
-                  <p className="text-sm text-red-800 font-medium">{alert.msg}</p>
-                  <p className="text-xs text-red-500 mt-1">{alert.time}</p>
+        {/* System Alerts */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-lg transition-shadow duration-300 p-6 flex flex-col">
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-red-50 border border-red-100">
+                <AlertCircle size={17} className="text-red-500" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-800">System Alerts</h3>
+                <p className="text-xs text-slate-400 mt-0.5">{recentAlerts.length} active</p>
+              </div>
+            </div>
+            <span className="flex items-center justify-center w-6 h-6 rounded-full bg-red-500 text-white text-xs font-bold">
+              {recentAlerts.length}
+            </span>
+          </div>
+
+          <div className="space-y-2.5 overflow-y-auto flex-1 max-h-60 pr-1" style={{ scrollbarWidth: "thin", scrollbarColor: "#e2e8f0 transparent" }}>
+            {recentAlerts.map((alert, index) => (
+              <div
+                key={alert.id}
+                className="group flex items-start gap-3 p-3.5 rounded-xl bg-gradient-to-r from-red-50 to-rose-50/50 border border-red-100 hover:border-red-200 hover:from-red-100/80 transition-all duration-200 cursor-default"
+              >
+                <div className="mt-0.5 flex-shrink-0 w-2 h-2 rounded-full bg-red-400 animate-pulse" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-slate-700 font-medium leading-snug">{alert.msg}</p>
+                  <p className="text-xs text-slate-400 mt-1.5 flex items-center gap-1">
+                    <span className="inline-block w-1 h-1 rounded-full bg-slate-300" />
+                    {alert.time}
+                  </p>
                 </div>
               </div>
             ))}
           </div>
-        </div>
 
+          <button className="mt-4 w-full text-xs font-semibold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-100 hover:border-red-200 py-2.5 rounded-xl transition-all duration-200 flex items-center justify-center gap-1.5">
+            View all alerts
+            <ArrowUpRight size={13} />
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
-// 🧱 Reusable Stat Card Component
-function StatCard({ title, value, subtitle, icon, color }) {
+// ─── Reusable Stat Card ───────────────────────────────────────────────────────
+function StatCard({ title, value, subtitle, trend, icon, gradient, lightBg, textColor, glowColor }) {
   return (
-    <div className="bg-white p-5 rounded-xl border border-[#E5E7EB] shadow-sm flex flex-col justify-between transition-transform hover:-translate-y-1 hover:shadow-md">
+    <div className={`group relative bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-xl hover:${glowColor} hover:-translate-y-1 transition-all duration-300 overflow-hidden p-5`}>
+      {/* Subtle gradient accent bar at top */}
+      <div className={`absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r ${gradient} opacity-60 group-hover:opacity-100 transition-opacity duration-300`} />
+
       <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm text-gray-500 font-medium mb-1">{title}</p>
-          <h3 className="text-2xl font-bold text-[#1F2937]">{value}</h3>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2">{title}</p>
+          <h3 className="text-2xl font-bold text-slate-800 tracking-tight truncate">{value}</h3>
         </div>
-        <div className={`p-3 rounded-xl ${color}`}>
+        <div className={`flex-shrink-0 p-3 rounded-2xl ${lightBg} ${textColor} border border-white shadow-sm group-hover:scale-110 transition-transform duration-300`}>
           {icon}
         </div>
       </div>
-      <div className="mt-4 text-xs font-medium text-gray-500 border-t border-gray-100 pt-3">
-        {subtitle}
+
+      <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+        <p className="text-xs text-slate-400">{subtitle}</p>
+        <span className={`text-xs font-bold ${textColor} ${lightBg} px-2 py-0.5 rounded-full`}>
+          {trend}
+        </span>
       </div>
     </div>
   );
